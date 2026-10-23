@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f5f4ef">
+  <meta name="description" content="Your AI agents, at a glance. si-notch is a native macOS app for live tasks, quick actions, and four little pixel companions.">
+  <meta property="og:title" content="si-notch — A little company for your big ideas">
+  <meta property="og:description" content="Your AI agents, at home in your Mac’s notch. Native, local, and a little more alive.">
+  <meta property="og:type" content="website">
+  <title>si-notch — A little company for your big ideas</title>
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css?v=4">
+  <link rel="stylesheet" href="notch-demo.css?v=4">
+  <link rel="stylesheet" href="usage-demo.css?v=4">
+  <link rel="stylesheet" href="mac-desktop.css?v=4">
+</head>
+<body>
+  <a class="skip" href="#main" data-i18n="skip">Skip to content</a>
+  <header class="site-header">
+    <a href="#" class="wordmark" aria-label="si-notch home"><span class="brand-icon" aria-hidden="true"><i></i><i></i></span>si-notch<span class="wordmark-dot">.</span></a>
+    <nav aria-label="Main navigation"><a href="#features" data-i18n="navFeatures">The little details</a><a href="#usage" data-i18n="navUsage">Usage</a><a href="#companions" data-i18n="navPets">Meet the companions</a><a href="https://disroot.website/" aria-label="Developer dis/root website">by dis/root ↗</a></nav>
+    <div class="header-actions"><button class="language-button" id="language" aria-label="Switch to Russian">RU</button><a class="button button-small button-dark" href="https://github.com/eugeneb1ack/si-notch/releases/latest" data-i18n="downloadShort">Download <span aria-hidden="true">↗</span></a></div>
+  </header>
+  <main id="main">
+    <section class="hero section-wrap" aria-labelledby="hero-title">
+      <div class="eyebrow"><span class="status-dot" aria-hidden="true"></span><span data-i18n="eyebrow">A small home for your AI agents</span></div>
+      <h1 id="hero-title" data-i18n="heroTitle">A little company. <br><em>For your big ideas.</em></h1>
+      <p class="hero-copy" data-i18n="heroCopy">Your agents are busy. Your notch keeps you in the loop. <br>Live tasks, useful little details, and a companion by your side.</p>
+      <div class="hero-actions"><a class="button button-dark" href="https://github.com/eugeneb1ack/si-notch/releases/latest"><svg aria-hidden="true" width="18" height="20" viewBox="0 0 18 20"><path fill="currentColor" d="M12.1 3.2c.7-.9 1.2-2.1 1.1-3.2-1.1.1-2.4.7-3.2 1.6-.7.8-1.3 2-1.2 3.1 1.2.1 2.4-.6 3.3-1.5ZM15.7 10.6c0-2.4 2-3.5 2.1-3.6-1.1-1.6-2.7-1.8-3.3-1.8-1.4-.2-2.7.8-3.4.8-.7 0-1.8-.8-3-.8C5.6 5.2 3.4 7.3 3.4 10.5c0 1.9.7 3.9 1.6 5.2.8 1.1 1.6 2.4 2.8 2.3 1.1 0 1.6-.7 3-.7 1.4 0 1.8.7 3 .7 1.2 0 2-1.1 2.7-2.2.8-1.2 1.1-2.3 1.2-2.4-.1 0-2-.8-2-2.8Z" transform="translate(-2 1)"/></svg><span data-i18n="download">Download for Mac</span><span class="arrow" aria-hidden="true">↗</span></a><a class="text-link" href="#companions" data-i18n="meetLink">Meet your new desk mates <span aria-hidden="true">↓</span></a></div>
+      <div class="hero-meta"><p class="compatibility" data-i18n="compatibility">macOS 14+ · Apple Silicon · Free to use</p><a class="source-link" href="https://github.com/eugeneb1ack/si-notch"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 5-5 5 5 5m8-10 5 5-5 5m-3-12-2 14"/></svg><span data-i18n="openSource">Open source on GitHub</span><span aria-hidden="true">↗</span></a></div>
+      <div class="desktop-scene">
+        <div class="scene-orbit orbit-one" aria-hidden="true"></div><div class="scene-orbit orbit-two" aria-hidden="true"></div>
+        <div id="notch-demo"></div>
+        <div class="notch-invitation"><svg aria-hidden="true" width="17" height="20" viewBox="0 0 17 20" fill="none"><path d="M3 2v13l3.5-3.5 3 6 2-1-3-6H14L3 2Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg><span data-i18n="notchHint">Hover over the notch, or give it a click.</span></div>
+      </div>
+    </section>
+
+    <section class="agents section-wrap" aria-labelledby="agents-title"><p id="agents-title" data-i18n="agentsTitle">Different agents. One familiar place.</p><div class="agent-names"><span>Codex</span> <span>Claude Code</span> <span>Hermes</span> <span>Pi</span> <span>OpenCode</span> <span>Gemini CLI</span> <span>Copilot CLI</span> <span>Cursor Agent</span></div><span class="agents-footnote" data-i18n="agentsFootnote">And your own tools, through the local API.</span></section>
+
+    <section class="features section-wrap" id="features" aria-labelledby="features-title">
+      <div class="section-heading"><div><p class="section-kicker" data-i18n="featuresKicker">LESS CHECKING. MORE MAKING.</p><h2 id="features-title" data-i18n="featuresTitle">Keep your flow. <br>Catch the important bits.</h2></div><p class="section-description" data-i18n="featuresCopy">A glance for progress. A click for context. <br>si-notch brings your agents together without taking over your desktop.</p></div>
+      <div class="feature-tabs" role="tablist" aria-label="Explore si-notch"><button type="button" role="tab" id="tab-sessions" aria-selected="true" aria-controls="feature-panel" data-feature="sessions" data-i18n="tabSessions"><span>01 /</span> <span>In the loop</span></button><button type="button" role="tab" id="tab-settings" tabindex="-1" aria-selected="false" aria-controls="feature-panel" data-feature="settings" data-i18n="tabSettings"><span>02 /</span> <span>Make it yours</span></button><button type="button" role="tab" id="tab-companions" tabindex="-1" aria-selected="false" aria-controls="feature-panel" data-feature="companions" data-i18n="tabCompanions"><span>03 /</span> <span>Good company</span></button></div>
+      <div id="feature-panel" class="feature-panel" role="tabpanel" tabindex="0" aria-labelledby="tab-sessions">
+        <div class="feature-explanation"><span class="feature-number" id="feature-number">01</span><h3 id="feature-title"><span class="heading-line">The big picture,</span><span class="heading-line">at a small scale.</span></h3><p id="feature-copy">See what is working, waiting, or done. Open a task for messages, tool activity, and subagents — without losing your place.</p><div class="feature-tags" id="feature-tags"><span>Live sessions</span> <span>Agent availability</span></div></div>
+        <button class="screenshot-button" id="expand-screenshot" aria-label="Enlarge app screenshot"><img id="feature-shot" src="assets/showcase-sessions-en.png" alt="si-notch interface with three sessions" loading="lazy" width="680" height="470"><span class="enlarge-hint" data-i18n="enlarge">Click to take a closer look <span aria-hidden="true">↗</span></span></button>
+      </div>
+      <div class="small-details"><div><img class="detail-icon" src="assets/detail-native.svg" width="80" height="64" alt="" loading="lazy"><h3 data-i18n="nativeTitle">Feels right at home.</h3><p data-i18n="nativeCopy">Built for Mac in SwiftUI and AppKit. Keyboard shortcuts, multiple displays, and a place in your menu bar.</p></div><div><img class="detail-icon" src="assets/detail-connect.svg" width="80" height="64" alt="" loading="lazy"><h3 data-i18n="connectTitle">Near or far.</h3><p data-i18n="connectCopy">Local agents and SSH connections, together. Connect the tools you already use.</p></div><div><img class="detail-icon" src="assets/detail-history.svg" width="80" height="64" alt="" loading="lazy"><h3 data-i18n="historyTitle">A little more context.</h3><p data-i18n="historyCopy">Local text history and available usage details. Keep what helps, with limits you control.</p></div></div>
+    </section>
+
+    <section class="usage-section" id="usage" aria-labelledby="usage-title"><div class="section-wrap">
+      <div class="section-heading"><div><p class="section-kicker" data-i18n="usageKicker">USAGE, IN PERSPECTIVE.</p><h2 id="usage-title" data-i18n="usageTitle">See where <br>your tokens go.</h2></div><p class="section-description" data-i18n="usageCopy">Recorded tokens by task, session and subagent. <br>Account limits, with time to reset.</p></div>
+      <div id="usage-demo"></div>
+      <p class="usage-footnote" data-i18n="usageFootnote">Available statistics depend on the connected agent.</p>
+    </div></section>
+
+    <section class="companions" id="companions" aria-labelledby="companions-title"><div class="section-wrap">
+      <div class="pet-heading"><p class="section-kicker" data-i18n="petsKicker">SERIOUS WORK. TINY FRIENDS.</p><h2 id="companions-title" data-i18n="petsTitle">Someone’s rooting for you.</h2><p data-i18n="petsCopy">Four little personalities, made of pixels. <br>Hover to say hello. Give one a click and a little affection.</p></div>
+      <div class="pet-state-picker" role="group" aria-label="Companion mood"><button type="button" data-pet-state="idle" aria-pressed="false" data-i18n="stateIdle">Taking a breather</button><button type="button" data-pet-state="working" aria-pressed="true" data-i18n="stateWorking">Getting things done</button><button type="button" data-pet-state="completed" aria-pressed="false" data-i18n="stateDone">A little celebration</button></div><div class="pet-grid">
+        <button class="pet" type="button" data-pet="robot" aria-label="Say hello to Robot"><span class="pet-bubble" aria-hidden="true">beep, friend.</span><span class="pet-stage"><canvas width="160" height="160" aria-hidden="true"></canvas><span class="pet-shadow"></span></span><span class="pet-name">Robot<span>01</span></span><span class="pet-personality" data-i18n="robotCopy">Your pocket-sized co-pilot.</span></button>
+        <button class="pet" type="button" data-pet="cat" aria-label="Pet Cat"><span class="pet-bubble" aria-hidden="true">prrr…</span><span class="pet-stage"><canvas width="160" height="160" aria-hidden="true"></canvas><span class="pet-shadow"></span></span><span class="pet-name">Cat<span>02</span></span><span class="pet-personality" data-i18n="catCopy">Quality control. Mostly naps.</span></button>
+        <button class="pet" type="button" data-pet="sprout" aria-label="Say hello to Sprout"><span class="pet-bubble" aria-hidden="true">you’ve got this.</span><span class="pet-stage"><canvas width="160" height="160" aria-hidden="true"></canvas><span class="pet-shadow"></span></span><span class="pet-name">Sprout<span>03</span></span><span class="pet-personality" data-i18n="sproutCopy">Growing right alongside you.</span></button>
+        <button class="pet" type="button" data-pet="ghost" aria-label="Say hello to Ghost"><span class="pet-bubble" aria-hidden="true">boo. but kindly.</span><span class="pet-stage"><canvas width="160" height="160" aria-hidden="true"></canvas><span class="pet-shadow"></span></span><span class="pet-name">Ghost<span>04</span></span><span class="pet-personality" data-i18n="ghostCopy">A soft spot for late nights.</span></button>
+      </div><p class="pet-footnote" data-i18n="petsFootnote">Four si-notch companions. Their mood follows your tasks.</p><p class="sr-only" id="pet-announcement" aria-live="polite"></p>
+    </div></section>
+
+    <section class="download-section section-wrap" id="download" aria-labelledby="download-title"><div class="download-mark" aria-hidden="true"><span class="brand-icon"><i></i><i></i></span></div><p class="section-kicker" data-i18n="downloadKicker">SMALL APP. A NICER DAY.</p><h2 id="download-title" data-i18n="downloadTitle">Your notch has <br>good company.</h2><p data-i18n="downloadCopy">Download. Drag to Applications. Connect your agents. <br>Make a little room for si-notch.</p><a class="button button-dark" href="https://github.com/eugeneb1ack/si-notch/releases/latest"><span data-i18n="download">Download for Mac</span><span aria-hidden="true">↗</span></a><p class="download-meta" data-i18n="downloadMeta">Always the latest stable release on GitHub. <br>macOS 14+ · Apple Silicon</p><details class="install-note"><summary data-i18n="installSummary">A note about installation</summary><p data-i18n="installNote">The current app is ad hoc signed and not notarized by Apple. macOS may ask you to allow it in Privacy & Security. Only download from the official GitHub releases. Intel Macs have not been tested.</p><a href="https://github.com/eugeneb1ack/si-notch#install" data-i18n="readInstall">Read installation details ↗</a></details></section>
+  </main>
+  <footer class="site-footer section-wrap"><a class="wordmark" href="#">si-notch<span class="wordmark-dot">.</span></a><span data-i18n="footerCopy">Made with care by <a href="https://disroot.website/">dis/root</a>.</span><div><a href="https://github.com/eugeneb1ack/si-notch" data-i18n="source">GitHub</a><a href="https://github.com/eugeneb1ack/si-notch/blob/main/docs/agent-integrations.md" data-i18n="setup">Agent setup</a><a href="https://github.com/eugeneb1ack/si-notch/blob/main/LICENSE" data-i18n="license">License</a></div></footer>
+  <dialog id="image-dialog" aria-label="Enlarged app screenshot"><button type="button" class="dialog-close" aria-label="Close screenshot">×</button><img id="dialog-image" alt=""><p data-i18n="screenshotCaption">App screenshot</p></dialog>
+  <script type="module" src="app.js?v=4"></script>
+</body>
+</html>

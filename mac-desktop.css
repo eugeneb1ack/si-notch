@@ -1,0 +1,18 @@
+/* Decorative macOS desktop frame. The root owns the scene's height and wallpaper. */
+.md-desktop-chrome{position:absolute;inset:0;pointer-events:none;user-select:none;z-index:2;container:mac-desktop / inline-size;color:#2b2634;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;text-align:left}.md-desktop-chrome *{box-sizing:border-box}.md-menubar{position:absolute;inset:0 0 auto;height:27px;display:grid;grid-template-columns:minmax(0,1fr) var(--mac-notch-width,246px) minmax(0,1fr);align-items:center;padding:0 15px;background:#f7f4fa28;border-bottom:1px solid #ffffff15;backdrop-filter:blur(13px) saturate(1.25);-webkit-backdrop-filter:blur(13px) saturate(1.25);font-size:10px;line-height:1;letter-spacing:0}.md-menu-left,.md-menu-right{display:flex;align-items:center;gap:14px;min-width:0;height:100%;overflow:hidden;white-space:nowrap}.md-menu-right{justify-content:flex-end;gap:12px}.md-menu-left>span,.md-menu-left>strong,.md-menu-right>span{flex:0 0 auto}.md-active-app{font-weight:650}.md-apple{display:block;width:12px;height:15px;flex:0 0 12px}.md-menubar svg{display:block}.md-wifi{width:14px;height:12px}.md-battery{width:22px;height:12px}.md-spotlight{width:13px;height:13px}.md-controls{width:15px;height:14px}.md-menu-date,.md-menu-time{font-size:9px;font-weight:500;font-variant-numeric:tabular-nums}.md-menu-right .md-menu-time{margin-left:-5px}.md-menu-camera-gap{height:27px}
+@container mac-desktop (max-width:1000px){.md-menu-left{gap:11px}.md-menu-right{gap:9px}.md-menu-window,.md-menu-help{display:none}.md-menu-date{font-size:8px}}
+@container mac-desktop (max-width:760px){.md-menu-go,.md-menu-view,.md-status-search,.md-menu-date{display:none}.md-menu-left{gap:10px}.md-menu-right{gap:10px}}
+@container mac-desktop (max-width:560px){.md-menubar{padding-inline:8px;font-size:9px}.md-menu-word,.md-status-controls{display:none}.md-menu-left{gap:9px}.md-menu-right{gap:5px}.md-wifi{width:12px}.md-battery{width:18px}.md-menu-right .md-menu-time{margin-left:0}}
+@container mac-desktop (max-width:420px){.md-active-app{display:none}.md-menu-time{font-size:9px}}
+@container mac-desktop (max-width:360px){.md-menubar{padding-inline:4px}.md-menu-right{gap:4px}.md-menu-time{font-size:8px;letter-spacing:-.2px}.md-wifi{width:10px}}
+@supports not (container-type:inline-size){@media(max-width:800px){.md-menu-word,.md-menu-date,.md-status-controls{display:none}.md-menubar{padding-inline:6px}.md-menu-right{gap:5px}}@media(max-width:640px){.md-active-app{display:none}.md-wifi{width:10px}.md-battery{width:18px}.md-menu-time{font-size:8px}.md-menu-right .md-menu-time{margin-left:0}}}
+/* Keep the real left/right menu layout even when the desktop is shown on a phone. */
+.desktop-scene{--mac-notch-width:246px}
+@media(max-width:640px){.desktop-scene{--mac-notch-width:clamp(148px,calc(100vw - 194px),246px)}}
+@media(prefers-reduced-transparency:reduce){.md-menubar{background:#ded9e7;backdrop-filter:none;-webkit-backdrop-filter:none}}
+
+/* The reference image is framed to its visible Dock, preserving its alpha. */
+.md-dock{position:absolute;left:50%;bottom:3px;transform:translateX(-50%);width:560px;max-width:calc(100% - 16px);aspect-ratio:1920 / 340;pointer-events:none}
+.md-dock img{display:block;width:100%;height:100%;max-width:none;object-fit:cover;object-position:50% 54%;border:0}
+@container mac-desktop (max-width:560px){.md-dock{width:320px;bottom:5px}}
+@supports not (container-type:inline-size){@media(max-width:640px){.md-dock{width:320px;bottom:5px}}}
