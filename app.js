@@ -1,7 +1,7 @@
-import { mountCompanion } from './assets/companions/companions.js?v=4';
-import { mountNotchDemo } from './notch-demo.js?v=4';
-import { mountUsageDemo } from './usage-demo.js?v=4';
-import { mountMacDesktop } from './mac-desktop.js?v=4';
+import { mountCompanion } from './assets/companions/companions.js?v=5';
+import { mountNotchDemo } from './notch-demo.js?v=5';
+import { mountUsageDemo } from './usage-demo.js?v=5';
+import { mountMacDesktop } from './mac-desktop.js?v=5';
 
 const copy = {
   en: {},
@@ -34,7 +34,7 @@ const copy = {
     downloadMeta: 'Всегда актуальный стабильный релиз на GitHub. <br>macOS 14+ · Apple Silicon',
     installSummary: 'Небольшая заметка об установке',
     installNote: 'Текущая сборка имеет локальную подпись и пока не нотарифицирована Apple. macOS может попросить разрешить запуск в разделе «Конфиденциальность и безопасность». Скачивайте приложение только из официальных GitHub Releases. Работа на Intel не проверена.',
-    readInstall: 'Подробнее об установке ↗', footerCopy: 'С заботой от <a href="https://disroot.website/">dis/root</a>.',
+    readInstall: 'Подробнее об установке ↗', footerCare: 'С заботой от',
     openSource: 'Открытый код на GitHub', source: 'GitHub', setup: 'Подключение агентов', license: 'Лицензия'
   }
 };

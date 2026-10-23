@@ -1,4 +1,4 @@
-import { mountCompanion } from './assets/companions/companions.js?v=4';
+import { mountCompanion } from './assets/companions/companions.js?v=5';
 
 // A local, deliberately fictional preview of IslandView / SessionCard / HistoryView.
 // Provider colors match ProviderStyle.swift. This module never contacts an agent.
