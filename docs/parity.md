@@ -2,7 +2,11 @@
 
 # Feature status
 
-Available features and verification scope for 0.4.32 on Apple Silicon. Automated adapter tests use controlled inputs; they do not establish compatibility with every agent version or a complete model session.
+Available features and verification scope for 0.4.33 on Apple Silicon. Automated adapter tests use controlled inputs; they do not establish compatibility with every agent version or a complete model session.
+
+## Changes in 0.4.33
+
+Outcome receipts survive delivery failures and worker exits, without storing task text. Auxiliary calls and unbound tool IDs cannot invent task activity; late events cannot reopen a completed or failed Hermes turn. SSH peer provenance distinguishes remote navigation from a local application failure; notices clear after three seconds. Automated tests cover replay, process restarts, terminal fencing, source ownership and notice expiry. Native execution completion remains separate from successful task acceptance; unmatched historical events are not reclassified from silence.
 
 ## Changes in 0.4.32
 

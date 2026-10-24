@@ -48,6 +48,13 @@ public struct SessionStore: Sendable {
             } else if event.timestamp < existing.lastEventAt {
                 return .outOfOrder
             }
+            // A turn outcome is final. Late callbacks cannot reopen that same
+            // Hermes turn or create a new attention request in the app model.
+            if existing.provider == "hermes", [.completed, .failed].contains(existing.status),
+               existing.turnID != nil, event.turnID == existing.turnID,
+               [.working, .toolStarted, .waiting, .approvalRequested, .completed, .failed].contains(event.kind) {
+                return .outOfOrder
+            }
         }
         var session = sessions[event.sessionID] ?? AgentSession(
             id: event.sessionID, provider: event.provider,

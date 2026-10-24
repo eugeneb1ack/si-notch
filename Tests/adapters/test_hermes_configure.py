@@ -17,6 +17,18 @@ configure = importlib.util.module_from_spec(spec); spec.loader.exec_module(confi
 
 
 class ConfigureTests(unittest.TestCase):
+    def test_new_identity_refuses_pending_lifecycle_and_preserves_settings(self):
+        self.setup_plugin()
+        settings = self.plugin / 'si-notch.json'
+        before = settings.read_bytes()
+        outbox = self.plugin / 'lifecycle-outbox'
+        outbox.mkdir(); (outbox / 'pending.json').write_text('{}')
+        code, result = self.call('setup', '--name', 'Clone', '--new-instance')
+        self.assertEqual(code, 1)
+        self.assertIn('existing identity', result['detail'])
+        self.assertEqual(settings.read_bytes(), before)
+        self.assertTrue((outbox / 'pending.json').exists())
+
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory(dir="/private/tmp")
         self.addCleanup(self.temporary.cleanup)

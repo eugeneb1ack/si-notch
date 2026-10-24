@@ -117,6 +117,14 @@ def run(helper):
                                   capture_output=True, text=True, timeout=3, check=False)
 
         try:
+            # A new native SwiftPM debug binary can take over three seconds even
+            # for --help. Separate cold launch from the strict IPC deadlines below.
+            cold_start = time.monotonic()
+            warmup = subprocess.run([str(helper), "--help"], env=environment,
+                                    capture_output=True, text=True, timeout=15, check=False)
+            cold_start = time.monotonic() - cold_start
+            require(warmup.returncode == 0 and "si-notchctl" in warmup.stdout and not warmup.stderr,
+                    "helper cold launch failed")
             first = {"type": "agent-turn-complete", "thread-id": str(uuid.uuid4()),
                      "turn-id": str(uuid.uuid4()), "last-assistant-message": "First synthetic turn"}
             result = call("notify", first)
@@ -196,7 +204,8 @@ def run(helper):
             elapsed = time.monotonic() - started
             require(result.returncode == 0 and not result.stdout and not result.stderr and 0.8 <= elapsed < 1.4,
                     f"notify did not bound its acknowledgement wait: {elapsed:.2f}s {result}")
-            return {"ok": True, "helper_processes": 12, "frames": len(fixture.events),
+            return {"ok": True, "helper_processes": 13, "frames": len(fixture.events),
+                    "cold_start_seconds": round(cold_start, 3),
                     "raw_replay": "duplicate", "timeout_seconds": round(elapsed, 3)}
         finally:
             fixture.close()

@@ -515,6 +515,8 @@
 "session.open" = "打开 %@：%@";
 "session.openApp" = "在智能体应用中打开";
 "session.openFailed" = "无法打开此会话的应用。应用可能已关闭，或未提供地址。";
+"session.remote" = "此会话在远程运行，无法在这台 Mac 上打开。";
+"session.noLocalTarget" = "此会话没有可在这台 Mac 上打开的本地应用。";
 "settings.hoverIntentHelp" = "将鼠标移到可见刘海上并短暂停留。下方区域、透明圆角、路过或拖动窗口均不会展开面板。所有进入方向都采用相同延迟。关闭后，请将鼠标移开再重新悬停。";
 "session.serviceMemory" = "后台 · 记忆";
 "session.serviceMemoryHelp" = "后台记忆处理任务。仍可查看其状态和详细信息。";

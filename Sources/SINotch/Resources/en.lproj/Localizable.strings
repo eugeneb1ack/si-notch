@@ -515,6 +515,8 @@
 "session.open" = "Open %@: %@";
 "session.openApp" = "Open in agent app";
 "session.openFailed" = "Could not open the app for this session. It may be closed or its address is unavailable.";
+"session.remote" = "This session runs remotely and cannot be opened on this Mac.";
+"session.noLocalTarget" = "This session has no local app to open.";
 "settings.hoverIntentHelp" = "Move onto the visible notch and pause briefly. The area below it, transparent corners, passing movement and window dragging do not open the panel. The delay applies from every direction. After closing, move away and hover again.";
 "session.serviceMemory" = "Background · Memory";
 "session.serviceMemoryHelp" = "A background memory-processing task. Its status and details remain available.";
