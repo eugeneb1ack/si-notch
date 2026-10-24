@@ -1,5 +1,24 @@
 # Current revision
 
+Plugin **1.15**, bundled with app **0.4.34**, recovers a managed worker’s missing final hook from the committed native execution ledger. The existing heartbeat reads only its own profile database. A private `active-executions` journal records opaque admission/execution and turn identities before activity is delivered; no prompts, tool content or native database writes are involved. Successful, failed, interrupted and unknown outcomes remain distinct. A confirmed interrupted worker closes without success; an unknown execution remains waiting. Generation, owner epoch and latest-turn checks prevent another execution’s outcome from changing the current task. Unsupported schemas retain hook-only behavior.
+
+Immutable runtime source: [`52b6de6fba263745db245f4672e859ca24bc2754`](https://github.com/eugeneb1ack/si-notch/tree/52b6de6fba263745db245f4672e859ca24bc2754/plugins/hermes).
+
+```sh
+hermes plugins install eugeneb1ack/si-notch/plugins/hermes --ref 52b6de6fba263745db245f4672e859ca24bc2754 --no-enable
+```
+
+On 2026-10-24, a real remote API task completed during a forced interruption of the app-owned telemetry tunnel. The native completed outcome was observed in the private outbox before reconnection; automatic recovery delivered Done and restored idle, with empty queues. A separate native Kanban worker restart reproduced a missing final hook in plugin 1.14: native execution was interrupted while its old card remained Working after the replacement completed. With plugin 1.15 installed in the same profile, a repeated native reclaim automatically closed the interrupted execution and restored idle without replaying a success or restarting the Mac app. These are target-scoped operator restarts; abrupt SIGKILL, host crashes and every runtime entry point are not established by these checks.
+
+| File | SHA-256 |
+| --- | --- |
+| `__init__.py` | `f63503ecc5a9b961e439c6b424b60424a815d76d6365afc9766edc64110b2e16` |
+| `plugin.yaml` | `66f6b4fd55efc594b892960698082fed8eda5245de86fb4cf46c73dcc6fc9f32` |
+| `relay.py` | `b387d9f5b6d22bd3a76cf51f4b44a845c3bb67d5b2e13cf2866123f173a24728` |
+| `configure.py` | `acfab38546654040b3563517cf44e29ca881fb7d3ea279a6e3193cf82f12762b` |
+
+# Previous plugin 1.14
+
 Plugin **1.14**, bundled with app **0.4.33**, persists outcome receipts until delivery is acknowledged, retries them through the existing heartbeat and avoids process-local sequence counters. Auxiliary/compression requests do not start task activity. Tool-only fallback IDs are accepted only after session/LLM lifecycle established their identity. The event format and registered hooks remain compatible.
 
 Immutable runtime source: [`50d5fd9bbe872d770830cddb96584700411490b0`](https://github.com/eugeneb1ack/si-notch/tree/50d5fd9bbe872d770830cddb96584700411490b0/plugins/hermes).
