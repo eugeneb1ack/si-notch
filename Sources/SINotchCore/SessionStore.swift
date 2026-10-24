@@ -14,6 +14,7 @@ public struct SessionStore: Sendable {
     private var rememberedIDs: Set<String> = []
     private var idOrder: [String] = []
     private var explicitlyEndedIDs: Set<String> = []
+    private var endedTurnIDs: Set<String> = []
 
     public var orderedSessions: [AgentSession] {
         sessions.values.sorted {
@@ -50,7 +51,8 @@ public struct SessionStore: Sendable {
             }
             // A turn outcome is final. Late callbacks cannot reopen that same
             // Hermes turn or create a new attention request in the app model.
-            if existing.provider == "hermes", [.completed, .failed].contains(existing.status),
+            if existing.provider == "hermes",
+               [.completed, .failed].contains(existing.status) || endedTurnIDs.contains(existing.id),
                existing.turnID != nil, event.turnID == existing.turnID,
                [.working, .toolStarted, .waiting, .approvalRequested, .completed, .failed].contains(event.kind) {
                 return .outOfOrder
@@ -60,6 +62,9 @@ public struct SessionStore: Sendable {
             id: event.sessionID, provider: event.provider,
             title: event.title ?? Self.defaultTitle(for: event), projectPath: event.projectPath,
             createdAt: event.timestamp, updatedAt: receivedAt)
+        if event.kind == .sessionStarted || (event.turnID != nil && event.turnID != session.turnID) {
+            endedTurnIDs.remove(session.id)
+        }
         if let title = event.title, !title.isEmpty { session.title = title }
         if let connectionID = event.connectionID { session.connectionID = connectionID }
         if let connectionName = event.connectionName { session.connectionName = connectionName }
@@ -118,7 +123,17 @@ public struct SessionStore: Sendable {
                 session.status = event.kind == .completed ? .completed : event.kind == .failed ? .failed : .ended
                 session.currentTool = nil
                 session.approvalID = nil
-                if event.kind == .sessionEnded { explicitlyEndedIDs.insert(session.id) }
+                if event.kind == .sessionEnded {
+                    // Hermes recovery can close one interrupted execution while
+                    // its durable session remains available for the next turn.
+                    // Finalize hooks omit turn_id and still close the session.
+                    if event.provider != "hermes" || event.turnID == nil {
+                        explicitlyEndedIDs.insert(session.id)
+                        endedTurnIDs.remove(session.id)
+                    } else {
+                        endedTurnIDs.insert(session.id)
+                    }
+                }
                 // Background children can outlive a completed parent turn.
                 if event.kind != .completed {
                     for index in session.subagents.indices where session.subagents[index].status.isActive {
@@ -173,6 +188,7 @@ public struct SessionStore: Sendable {
     public mutating func removeSession(id: String) {
         sessions.removeValue(forKey: id)
         explicitlyEndedIDs.remove(id)
+        endedTurnIDs.remove(id)
     }
 
     public mutating func clear() {
@@ -180,6 +196,7 @@ public struct SessionStore: Sendable {
         rememberedIDs.removeAll()
         idOrder.removeAll()
         explicitlyEndedIDs.removeAll()
+        endedTurnIDs.removeAll()
     }
 
     private mutating func remember(_ id: String) {

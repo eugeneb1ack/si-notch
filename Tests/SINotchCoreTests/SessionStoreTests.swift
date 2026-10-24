@@ -4,19 +4,64 @@ import XCTest
 
 final class SessionStoreTests: XCTestCase {
     func testHermesTerminalTurnSurvivesLateActivityWhileNextTurnCanStart() {
-        for status: AgentEventKind in [.completed, .failed] {
+        for status: AgentEventKind in [.completed, .failed, .sessionEnded] {
             var store = SessionStore()
             let now = Date()
             store.apply(AgentEvent(sessionID: "s", provider: "hermes", kind: status, timestamp: now, turnID: "first"))
             for kind: AgentEventKind in [.working, .toolStarted, .waiting, .approvalRequested] {
                 XCTAssertEqual(store.apply(AgentEvent(sessionID: "s", provider: "hermes", kind: kind,
                     timestamp: now.addingTimeInterval(1), turnID: "first")), .outOfOrder)
-                XCTAssertEqual(store.sessions["s"]?.status, status == .completed ? .completed : .failed)
+                XCTAssertEqual(store.sessions["s"]?.status, status == .completed ? .completed : status == .failed ? .failed : .ended)
             }
             store.apply(AgentEvent(sessionID: "s", provider: "hermes", kind: .working,
                 timestamp: now.addingTimeInterval(2), turnID: "second"))
             XCTAssertEqual(store.sessions["s"]?.status, .working)
         }
+    }
+
+    func testHermesTurnScopedRecoveryDoesNotRequireAnotherSessionStart() {
+        var store = SessionStore()
+        let now = Date()
+        store.apply(AgentEvent(sessionID: "s", provider: "hermes", kind: .sessionStarted, timestamp: now))
+        store.apply(AgentEvent(sessionID: "s", provider: "hermes", kind: .working,
+            timestamp: now.addingTimeInterval(1), turnID: "interrupted"))
+        store.apply(AgentEvent(sessionID: "s", provider: "hermes", kind: .sessionEnded,
+            timestamp: now.addingTimeInterval(2), turnID: "interrupted"))
+        XCTAssertEqual(store.sessions["s"]?.status, .ended)
+        // A loaded observer keeps its _STARTED cache: the next pre_llm_call
+        // emits working alone for this same durable native session.
+        XCTAssertEqual(store.apply(AgentEvent(sessionID: "s", provider: "hermes", kind: .working,
+            timestamp: now.addingTimeInterval(3), turnID: "replacement")), .applied)
+        XCTAssertEqual(store.sessions["s"]?.status, .working)
+        XCTAssertEqual(store.sessions["s"]?.turnID, "replacement")
+    }
+
+    func testDurableFinalizeStillRequiresSessionStartForHermesAndOtherProviders() {
+        for (provider, turn): (String, String?) in [("hermes", nil), ("custom", "old-turn")] {
+            var store = SessionStore()
+            let now = Date()
+            store.apply(AgentEvent(sessionID: "s", provider: provider, kind: .sessionEnded, timestamp: now, turnID: turn))
+            store.apply(AgentEvent(sessionID: "s", provider: provider, kind: .working,
+                timestamp: now.addingTimeInterval(1), turnID: "new-turn"))
+            XCTAssertEqual(store.sessions["s"]?.status, .ended)
+            store.apply(AgentEvent(sessionID: "s", provider: provider, kind: .sessionStarted,
+                timestamp: now.addingTimeInterval(2)))
+            store.apply(AgentEvent(sessionID: "s", provider: provider, kind: .working,
+                timestamp: now.addingTimeInterval(3), turnID: "new-turn"))
+            XCTAssertEqual(store.sessions["s"]?.status, .working)
+        }
+    }
+
+    func testHermesSilenceExpiryIsNotAConfirmedTurnInterruption() {
+        var store = SessionStore()
+        let now = Date()
+        store.apply(AgentEvent(sessionID: "s", provider: "hermes", kind: .working,
+            timestamp: now, turnID: "still-running"), receivedAt: now)
+        store.expireStaleSessions(now: now.addingTimeInterval(10), timeout: 1)
+        XCTAssertEqual(store.sessions["s"]?.status, .ended)
+        XCTAssertEqual(store.apply(AgentEvent(sessionID: "s", provider: "hermes", kind: .working,
+            timestamp: now.addingTimeInterval(11), turnID: "still-running")), .applied)
+        XCTAssertEqual(store.sessions["s"]?.status, .working)
     }
 
     func testHermesCompletionAfterWorkerRestartUsesEventTimeAndDeduplicatesReplay() {
