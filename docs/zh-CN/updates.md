@@ -18,6 +18,14 @@ Ed25519 私钥必须保存在仓库之外并安全备份；应用内固定公钥
 
 [GitHub Actions](../../.github/workflows/ci.yml)在每次推送和 pull request 时运行测试、验证 ZIP 并构建 DMG。维护者在本机使用私钥签名和发布，应用不包含 GitHub 令牌。
 
+## 保留发布版本
+
+[Release retention](../../.github/workflows/release-retention.yml) 在每次发布稳定版或测试版后自动运行，包括在 GitHub 上手动发布。按照发布时间保留三个已发布版本，其中一个名额始终保留给当前的稳定版 **Latest**。旧版本及其附件会被删除；草稿、Git 标签和源代码历史保持不变。
+
+清理任务按顺序执行，每次删除前重新检查 Latest。API 错误或元数据不一致会停止清理，不会撤销新版本。修复错误后可通过 **Actions → Release retention → Run workflow** 重新运行。任务仅使用 GitHub 的临时令牌和 `contents: write` 权限，无需添加密钥。如果将发布移入使用 `GITHUB_TOKEN` 的工作流，发布后必须显式调度清理工作流，因为此类发布事件不会触发其他工作流。
+
+在已登录 GitHub CLI 的本机上运行 `python3 scripts/prune-releases.py --repo eugeneb1ack/si-notch` 可预览清理计划；只有添加 `--apply` 才会删除。正常发布命令无需额外操作。
+
 ## 插件更新
 
 “关于”和菜单栏会显示此版本新增或更新的插件，包括名称、版本和 GitHub 安装指南。插件需要单独安装，应用更新后仍可查看这些链接。此列表说明版本中的变更，不代表已检查每个远程配置中的插件版本。
