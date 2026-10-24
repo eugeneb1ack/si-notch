@@ -10,6 +10,8 @@ hermes plugins install eugeneb1ack/si-notch/plugins/hermes --ref 50d5fd9bbe872d7
 
 The private lifecycle outbox contains opaque routing and outcome metadata, never task text or tool output. Updates preserve settings and pending queues; explicit clone identity changes are refused while either outbox is nonempty. Automated regressions cover rejected ACKs, identical replay, worker restarts, auxiliary activity, missing outcomes and same-turn terminal fencing. Historical packets that were never recorded cannot be reconstructed as successful outcomes.
 
+On 2026-10-24, one real API task on the remote `backend-coder` profile was checked with installed app 0.4.33 (build 60) and plugin 1.14. One terminal call waited 20 seconds and returned the expected marker with exit code 0. The native run and session admission both completed; their session identity matched the app's opaque session ID. Working, Done with the final reply, and Online / No active tasks were visually verified in the production app. Read-only status samples retained idle with zero active tasks for more than two minutes and four fresh presence receipts after completion, without reopening the completed turn. Installed runtime hashes matched this revision and both delivery queues were empty. No profile settings or existing tasks were changed. This check covers one successful API task; live delivery failure, worker restart, interruption and other entry points remain outside its scope.
+
 | File | SHA-256 |
 | --- | --- |
 | `__init__.py` | `303d3faea61b0ee8b98395ec9e78d8cd1d1687f5aadf5c34051ed37c8a2bcc98` |
