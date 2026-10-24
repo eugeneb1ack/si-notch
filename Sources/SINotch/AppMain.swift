@@ -40,6 +40,8 @@ final class AppModel: ObservableObject {
     @Published var interactionErrors: Set<String> = []
     var codexResponder: ((CodexInteraction, String?, [String: String], @escaping (Bool) -> Void) -> Void)?
     @Published var navigationErrorID: String?
+    @Published var navigationNoticeKey: String?
+    var navigationNoticeTimer: Timer?
     var sessionNavigator: any SessionNavigating = SessionNavigator()
     private var navigationGeneration = 0
     @Published var settingsError: AppDisplayError?
@@ -258,7 +260,7 @@ final class AppModel: ObservableObject {
         do {
             let helper = Bundle.main.bundleURL.appendingPathComponent("Contents/Helpers/si-notchctl")
             let ipc = IPCServer(socketPath: socketPath, maxConnections: 128, onPeerMessage: { [weak self] data, executable, reply in
-                let origin = AgentConnection.localOrigin(peerExecutable: executable, helperURL: helper)
+                let origin = AgentConnection.receivingOrigin(peerExecutable: executable, helperURL: helper)
                 DispatchQueue.main.async { self?.receive(data, origin: origin, reply: { reply($0) }) }
             })
             try ipc.start()
@@ -347,13 +349,17 @@ final class AppModel: ObservableObject {
                         "visible_session_count": showAgents ? 0 : filtered.count, "active_filter": activeFilter, "tab": showAgents ? "agents" : "sessions",
                         "agents": agents.map { ["id": $0.id, "provider": $0.provider, "name": $0.name, "state": $0.state.rawValue,
                             "activity": $0.activity.rawValue, "active_task_count": $0.activeTaskCount,
+                            "remote": $0.connectorID != nil || connectionReceipts[$0.id]?.origin.isRemote == true,
                             "last_seen": $0.lastSeen.map { $0.timeIntervalSince1970 as Any } ?? NSNull()] as [String: Any] },
                         "remote_connections": remoteConnections.connections.map { ["id": $0.id.uuidString, "name": $0.displayName,
                             "status": remoteConnections.state($0.id).statusName] },
                         "expanded": expanded, "expansion_history": expansionHistory,
                         "presentation": presentationPolicy?.diagnostics ?? [:],
                         "providers": providerReceipts.mapValues { $0.timeIntervalSince1970 },
-                        "sessions": sessions.map { ["id": $0.id, "provider": $0.provider, "status": $0.status.rawValue] }]))
+                        "sessions": sessions.map { ["id": $0.id, "provider": $0.provider, "status": $0.status.rawValue,
+                            "connection_id": $0.connectionID as Any? ?? NSNull(), "turn_id": $0.turnID as Any? ?? NSNull(),
+                            "last_event_at": $0.lastEventAt.timeIntervalSince1970,
+                            "last_sequence": $0.lastSequence as Any? ?? NSNull(), "current_tool": $0.currentTool as Any? ?? NSNull()] }]))
             return
         }
         guard !paused else { reply(json(["ok": false, "error": "paused"])); return }
@@ -544,7 +550,7 @@ final class AppModel: ObservableObject {
         guard let id = event.connectionID else {
             // SSH events need a profile identity; otherwise they could mutate a
             // local legacy session or lend remote presence to a local app.
-            if case .remote = source { return nil }
+            if source.isRemote { return nil }
             return source
         }
         let configurations = remoteConnections.agentConfigurations.filter { $0.provider == event.provider && $0.connectionID == id }
@@ -552,6 +558,8 @@ final class AppModel: ObservableObject {
         let owners = Set(configurations.map(\.connectorID))
         switch source {
         case .local:
+            guard owners.isEmpty else { return nil }
+        case .remoteUnmanaged:
             guard owners.isEmpty else { return nil }
         case .remote(let connectorID):
             guard remoteConnections.connections.contains(where: { $0.id == connectorID }),
@@ -873,10 +881,15 @@ final class AppModel: ObservableObject {
         guard !defaults.bool(forKey: "disableClickJump") else { return }
         navigationGeneration += 1
         let generation = navigationGeneration
+        navigationNoticeTimer?.invalidate(); navigationNoticeTimer = nil
         navigationErrorID = nil
+        navigationNoticeKey = nil
+        if isRemoteSession(session) {
+            showNavigationNotice(session.id, key: "session.remote", generation: generation)
+            return
+        }
         guard let destination = SessionDestination.resolve(session) else {
-            navigationErrorID = session.id
-            onLayout?()
+            showNavigationNotice(session.id, key: "session.noLocalTarget", generation: generation)
             return
         }
         sessionNavigator.open(destination) { [weak self] success in
@@ -884,10 +897,27 @@ final class AppModel: ObservableObject {
             if success {
                 self.reminders.cancel(session.id)
             } else {
-                self.navigationErrorID = session.id
+                self.showNavigationNotice(session.id, key: "session.openFailed", generation: generation)
+            }
+        }
+    }
+    func isRemoteSession(_ session: AgentSession) -> Bool {
+        guard let id = session.connectionID else { return false }
+        if connectionReceipts[session.provider + "/" + id]?.origin.isRemote == true { return true }
+        return remoteConnections.agentConfigurations.contains { $0.provider == session.provider && $0.connectionID == id }
+    }
+    private func showNavigationNotice(_ id: String, key: String, generation: Int) {
+        navigationNoticeTimer?.invalidate()
+        navigationErrorID = id; navigationNoticeKey = key
+        navigationNoticeTimer = Timer.scheduledTimer(withTimeInterval: 3, repeats: false) { [weak self] _ in
+            Task { @MainActor in
+                guard let self, self.navigationGeneration == generation else { return }
+                self.navigationErrorID = nil; self.navigationNoticeKey = nil
+                self.navigationNoticeTimer = nil
                 self.onLayout?()
             }
         }
+        onLayout?()
     }
     func selectSession(_ id: String?) {
         presentationPolicy?.noteActivity()
@@ -937,6 +967,7 @@ final class AppModel: ObservableObject {
         for observer in presenceObservers { NSWorkspace.shared.notificationCenter.removeObserver(observer) }
         presenceObservers.removeAll()
         cancelExpansionTimer(); cancelRevealTimer()
+        navigationNoticeTimer?.invalidate(); navigationNoticeTimer = nil
         for id in Array(pending.keys) { cancelRequest(id) }
         server?.stop()
     }

@@ -6,6 +6,8 @@ build/
 research-private/
 *.log
 __pycache__/
+**/usage-outbox/
+**/lifecycle-outbox/
 *.py[cod]
 .env
 .env.*

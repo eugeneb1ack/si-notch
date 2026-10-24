@@ -153,7 +153,7 @@ struct RemoteHermesSetupClient {
             object["profiles"] = profiles.map { ["id": $0.id, "display_name": $0.displayName,
                 "enabled": $0.enabled, "show_session_text": $0.showSessionText] as [String: Any] }
             var sources: [String: String] = [:]
-            for (key, path) in [("plugin_python", "hermes-si-notch/__init__.py"), ("manifest", "hermes-si-notch/plugin.yaml"), ("relay", "remote-relay.py")] {
+            for (key, path) in [("plugin_python", "hermes-si-notch/__init__.py"), ("manifest", "hermes-si-notch/plugin.yaml"), ("relay", "remote-relay.py"), ("configure", "hermes-si-notch/configure.py")] {
                 guard let data = try? Data(contentsOf: resources.appendingPathComponent(path)) else { throw RemoteSetupError.missingResources }
                 sources[key] = data.base64EncodedString()
             }

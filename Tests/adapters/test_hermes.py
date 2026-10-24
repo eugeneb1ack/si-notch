@@ -27,10 +27,61 @@ class Context:
 
 
 class HermesPluginTests(unittest.TestCase):
+    def test_terminal_outbox_survives_failed_delivery_and_replays_same_identity(self):
+        with mock.patch.object(plugin, "_settings", return_value={"instanceId": "profile", "showSessionText": True}), \
+             mock.patch.object(plugin, "_send", return_value=False) as send:
+            plugin.on_session_end(session_id="s", turn_id="t", completed=True)
+            original = send.call_args.args[0]
+        path = next(plugin._lifecycle_directory().glob("*.json"))
+        saved = json.loads(path.read_text())
+        self.assertEqual(path.stat().st_mode & 0o777, 0o600)
+        self.assertEqual(path.parent.stat().st_mode & 0o777, 0o700)
+        self.assertTrue(set(saved) <= {"event", "session_id", "provider", "id", "timestamp", "connection_id", "connection_name", "turn_id"})
+        plugin._STARTED.clear()  # A different worker can deliver the durable receipt.
+        with mock.patch.object(plugin, "_send", return_value=True) as send:
+            plugin._drain_lifecycle(); plugin._drain_lifecycle()
+        self.assertEqual(send.call_count, 1)
+        self.assertEqual(send.call_args.args[0], saved)
+        self.assertEqual(saved["id"], original["id"])
+        self.assertEqual(saved["timestamp"], original["timestamp"])
+        self.assertFalse(path.exists())
+
+    def test_terminal_outbox_keeps_failed_and_unknown_outcomes_distinct(self):
+        with mock.patch.object(plugin, "_send", return_value=False):
+            plugin.on_session_end(session_id="failed", completed=False, interrupted=False)
+            plugin.on_session_end(session_id="unknown")
+        self.assertEqual({json.loads(p.read_text())["event"] for p in plugin._lifecycle_directory().glob("*.json")},
+                         {"agent.failed", "agent.waiting"})
+
+    def test_auxiliary_calls_do_not_restart_completed_task_or_create_task(self):
+        output = []
+        with mock.patch.object(plugin, "_send", side_effect=lambda value: output.append(value) or True):
+            plugin.on_session_end(session_id="s", turn_id="primary", completed=True)
+            for kind in ["auxiliary", "compression"]:
+                plugin.pre_api_request(session_id="s", turn_id="helper", call_kind=kind)
+                plugin.pre_api_request(session_id="new-helper", turn_id="helper", call_kind=kind)
+        self.assertEqual([e["event"] for e in output], ["agent.completed"])
+
+    def test_unbound_tool_task_id_does_not_invent_a_working_session(self):
+        with mock.patch.object(plugin, "_send") as send:
+            plugin.pre_tool_call(task_id="ephemeral-tool-call", tool_name="read_file")
+            plugin.post_tool_call(task_id="ephemeral-tool-call", tool_name="read_file", result='{"success":true}')
+        send.assert_not_called()
+        self.assertEqual(plugin._STARTED, set())
+
+    def test_new_worker_does_not_restart_a_process_local_sequence(self):
+        output = []
+        with mock.patch.object(plugin, "_send", side_effect=lambda value: output.append(value) or True):
+            plugin.pre_api_request(session_id="s", turn_id="first")
+            plugin._STARTED.clear()
+            plugin.on_session_end(session_id="s", turn_id="first", completed=True)
+        self.assertTrue(all("sequence" not in e for e in output))
+        self.assertEqual(len({e["id"] for e in output}), len(output))
+        self.assertEqual(sorted(e["timestamp"] for e in output), [e["timestamp"] for e in output])
+
     def setUp(self):
         plugin._stop_heartbeat()
         plugin._STARTED.clear()
-        plugin._SEQUENCES.clear()
         plugin._TASK_TITLES.clear()
         plugin._METADATA.clear()
         plugin._TODO_IDS.clear()
@@ -38,12 +89,14 @@ class HermesPluginTests(unittest.TestCase):
         self.spool = tempfile.TemporaryDirectory()
         self.spool_patch = mock.patch.object(plugin, "_spool_directory", return_value=Path(self.spool.name) / "usage")
         self.spool_patch.start()
+        self.lifecycle_patch = mock.patch.object(plugin, "_lifecycle_directory", return_value=Path(self.spool.name) / "lifecycle")
+        self.lifecycle_patch.start()
         plugin._CONTEXT = None
         plugin._DISABLED_UNTIL = 0
 
     def tearDown(self):
         plugin._stop_heartbeat()
-        self.spool_patch.stop(); self.spool.cleanup()
+        self.spool_patch.stop(); self.lifecycle_patch.stop(); self.spool.cleanup()
 
     def test_usage_outbox_retries_after_restart_without_text_or_duplicate_files(self):
         with mock.patch.object(plugin, "_send", return_value=False):
@@ -56,7 +109,7 @@ class HermesPluginTests(unittest.TestCase):
         self.assertNotIn("message", payload)
         self.assertNotIn("first_prompt", payload)
         self.assertNotIn("title", payload)
-        plugin._STARTED.clear(); plugin._SEQUENCES.clear()
+        plugin._STARTED.clear()
         with mock.patch.object(plugin, "_send", return_value=False): plugin._drain_usage()
         self.assertTrue(files[0].exists())
         with mock.patch.object(plugin, "_send", return_value=True) as send: plugin._drain_usage()
@@ -233,7 +286,8 @@ class HermesPluginTests(unittest.TestCase):
         self.assertNotIn(secret, json.dumps(output))
         self.assertNotIn("private-session", json.dumps(output))
         self.assertNotIn("secret-request", json.dumps(output))
-        self.assertEqual([event["sequence"] for event in output], list(range(1, 9)))
+        self.assertTrue(all("sequence" not in event for event in output))
+        self.assertEqual(len({event["id"] for event in output}), len(output))
         self.assertEqual(output[3]["tool_name"], "tool")
         self.assertTrue(output[4]["approval_id"].startswith("request-"))
         self.assertTrue(output[4]["attention_request_id"].startswith("input-"))

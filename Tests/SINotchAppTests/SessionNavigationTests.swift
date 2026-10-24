@@ -3,6 +3,44 @@ import SINotchCore
 @testable import SINotch
 
 final class SessionNavigationTests: XCTestCase {
+    @MainActor
+    func testRemoteNavigationExplainsLocationWithoutOpeningLocalAppAndExpires() async {
+        let model = model()
+        defer { model.shutdown() }
+        let navigator = NavigatorStub()
+        model.sessionNavigator = navigator
+        var task = session(bundle: "com.apple.Terminal")
+        task.connectionID = "remote"
+        let observed = AgentConnection.Observation(provider: "codex", connectionID: "remote", name: "Remote",
+            lastSeen: Date(), eventAt: Date(), eventID: "heartbeat", origin: .remoteUnmanaged)
+        model.connectionReceipts[observed.id] = observed
+        model.jump(task)
+        XCTAssertEqual(model.navigationNoticeKey, "session.remote")
+        XCTAssertEqual(model.navigationErrorID, task.id)
+        XCTAssertTrue(navigator.destinations.isEmpty)
+        let cleared = expectation(description: "Remote notice automatically disappears")
+        model.onLayout = { if model.navigationErrorID == nil { cleared.fulfill() } }
+        await fulfillment(of: [cleared], timeout: 4)
+        XCTAssertNil(model.navigationNoticeKey)
+    }
+
+    @MainActor
+    func testOldNoticeTimerAndNavigationCallbackCannotClearNewNotice() async {
+        let model = model()
+        defer { model.shutdown() }
+        let navigator = NavigatorStub(); model.sessionNavigator = navigator
+        model.jump(session())
+        let old = model.navigationNoticeTimer
+        XCTAssertEqual(model.navigationNoticeKey, "session.noLocalTarget")
+        model.jump(session(bundle: "com.apple.Terminal"))
+        model.jump(session())
+        navigator.completions[0](false)
+        old?.fire()
+        await Task.yield()
+        XCTAssertEqual(model.navigationNoticeKey, "session.noLocalTarget")
+        XCTAssertEqual(model.navigationErrorID, "task")
+    }
+
     private let thread = "11111111-2222-4333-8444-555555555555"
 
     private func session(url: String? = nil, bundle: String? = nil) -> AgentSession {

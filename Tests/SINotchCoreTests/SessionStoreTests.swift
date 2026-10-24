@@ -3,6 +3,37 @@ import XCTest
 @testable import SINotchCore
 
 final class SessionStoreTests: XCTestCase {
+    func testHermesTerminalTurnSurvivesLateActivityWhileNextTurnCanStart() {
+        for status: AgentEventKind in [.completed, .failed] {
+            var store = SessionStore()
+            let now = Date()
+            store.apply(AgentEvent(sessionID: "s", provider: "hermes", kind: status, timestamp: now, turnID: "first"))
+            for kind: AgentEventKind in [.working, .toolStarted, .waiting, .approvalRequested] {
+                XCTAssertEqual(store.apply(AgentEvent(sessionID: "s", provider: "hermes", kind: kind,
+                    timestamp: now.addingTimeInterval(1), turnID: "first")), .outOfOrder)
+                XCTAssertEqual(store.sessions["s"]?.status, status == .completed ? .completed : .failed)
+            }
+            store.apply(AgentEvent(sessionID: "s", provider: "hermes", kind: .working,
+                timestamp: now.addingTimeInterval(2), turnID: "second"))
+            XCTAssertEqual(store.sessions["s"]?.status, .working)
+        }
+    }
+
+    func testHermesCompletionAfterWorkerRestartUsesEventTimeAndDeduplicatesReplay() {
+        var store = SessionStore()
+        let now = Date()
+        store.apply(AgentEvent(sessionID: "s", provider: "hermes", kind: .working, timestamp: now, sequence: 100))
+        let completion = AgentEvent(sessionID: "s", provider: "hermes", kind: .completed,
+            timestamp: now.addingTimeInterval(1), id: "stable-receipt")
+        XCTAssertEqual(store.apply(completion), .applied)
+        XCTAssertEqual(store.apply(completion), .duplicate)
+        XCTAssertEqual(store.sessions["s"]?.status, .completed)
+        store.apply(AgentEvent(sessionID: "s", provider: "hermes", kind: .working,
+            timestamp: now.addingTimeInterval(2), turnID: "next"))
+        XCTAssertEqual(store.apply(completion), .duplicate)
+        XCTAssertEqual(store.sessions["s"]?.status, .working)
+    }
+
     func testNamedProfileCannotAdoptAnExistingLegacySession() {
         var store = SessionStore()
         XCTAssertEqual(store.apply(AgentEvent(sessionID: "s", provider: "hermes", kind: .working)), .applied)

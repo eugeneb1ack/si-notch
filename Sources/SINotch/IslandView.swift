@@ -351,7 +351,7 @@ struct SessionCard: View {
                 }.buttonStyle(.plain)
                     .accessibilityLabel(L10n.tr("session.open", info.providerName, info.primaryTitle))
                     .accessibilityIdentifier("open-session-" + session.id)
-                    .help(L10n.tr("session.openApp"))
+                    .help(L10n.tr(model.isRemoteSession(session) ? "session.remote" : "session.openApp"))
                 Button {
                     model.selectSession(selected ? nil : session.id)
                 } label: {
@@ -403,14 +403,14 @@ struct SessionCard: View {
                     .onTapGesture { model.activateSession(session) }
             }
             if model.navigationErrorID == session.id {
-                Label(L10n.tr("session.openFailed"), systemImage: "exclamationmark.circle")
+                Label(L10n.tr(model.navigationNoticeKey ?? "session.openFailed"), systemImage: "info.circle")
                     .font(.system(size: 10)).foregroundStyle(.orange).fixedSize(horizontal: false, vertical: true)
             }
             if !model.interactions(for: session.id).isEmpty {
                 let requests = model.interactions(for: session.id)
                 ForEach(requests) { request in
                     AgentInteractionView(model: model, request: request, providerName: info.providerName,
-                        canOpenAgent: !model.defaults.bool(forKey: "disableClickJump") && SessionDestination.resolve(session) != nil, openAgent: { model.jump(session) })
+                        canOpenAgent: !model.defaults.bool(forKey: "disableClickJump") && !model.isRemoteSession(session) && SessionDestination.resolve(session) != nil, openAgent: { model.jump(session) })
                 }
             } else if model.pending[session.id] == nil && needsAgentResponse {
                 VStack(alignment: .leading, spacing: 7) {

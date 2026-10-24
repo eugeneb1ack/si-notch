@@ -95,7 +95,7 @@ def inspect(home, relay, socket_path):
         profiles.append({"connection_id": connection_id, "id": identifier, "home": str(root), "display_name": name,
                          "enabled": plugin_enabled(config), "show_session_text": settings.get("showSessionText") is True,
                          "plugin_installed": (plugin / "__init__.py").is_file()})
-        for path in [root / "config.yaml", root / "profile.yaml", plugin / "__init__.py", plugin / "plugin.yaml", plugin / "si-notch.json"]:
+        for path in [root / "config.yaml", root / "profile.yaml", plugin / "__init__.py", plugin / "plugin.yaml", plugin / "configure.py", plugin / "si-notch.json"]:
             data = read(path)
             files[str(path)] = sha(data) if data is not None else None
     data = read(relay)
@@ -121,6 +121,11 @@ def sources(request):
         if not data or len(data) > 128 * 1024 or marker not in data:
             raise ValueError("Invalid bundled adapter: " + key)
         result[key] = data
+    if "configure" in request.get("sources", {}):
+        data = base64.b64decode(request["sources"]["configure"], validate=True)
+        if not data or len(data) > 128 * 1024 or b"Configure or diagnose only this si-notch plugin" not in data:
+            raise ValueError("Invalid bundled adapter: configure")
+        result["configure"] = data
     return result
 
 
@@ -165,6 +170,8 @@ def plan(request, home, relay, socket_path):
             plugin = root / "plugins/si-notch"
             propose(plugin / "__init__.py", bundled["plugin_python"], b"Hermes Agent observer plugin for si-notch")
             propose(plugin / "plugin.yaml", bundled["manifest"], b"name: si-notch")
+            if "configure" in bundled:
+                propose(plugin / "configure.py", bundled["configure"], b"Configure or diagnose only this si-notch plugin")
             settings = object_file(plugin / "si-notch.json")
             if not isinstance(settings.get("instanceId"), str) or not settings["instanceId"] or len(settings["instanceId"]) > 4096:
                 settings["instanceId"] = sha((platform.node() + ":" + str(root)).encode())

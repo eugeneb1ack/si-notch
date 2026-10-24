@@ -5,7 +5,13 @@ import SINotchCore
 struct AgentConnection: Identifiable, Equatable {
     /// Assigned by the receiving endpoint, never by event-supplied display metadata.
     enum Origin: Equatable {
-        case unknown, local, remote(UUID)
+        case unknown, local, remote(UUID), remoteUnmanaged
+        var isRemote: Bool {
+            switch self {
+            case .remote, .remoteUnmanaged: return true
+            case .unknown, .local: return false
+            }
+        }
     }
     struct Observation: Equatable {
         let provider: String
@@ -62,6 +68,16 @@ struct AgentConnection: Identifiable, Equatable {
         guard let peerExecutable,
               URL(fileURLWithPath: peerExecutable).resolvingSymlinksInPath() == helperURL.resolvingSymlinksInPath() else { return .unknown }
         return .local
+    }
+
+    static func receivingOrigin(peerExecutable: String?, helperURL: URL) -> Origin {
+        let local = localOrigin(peerExecutable: peerExecutable, helperURL: helperURL)
+        if local == .local { return local }
+        // The kernel supplies the peer executable; event metadata cannot claim SSH origin.
+        if let peerExecutable, ["/usr/bin/ssh", "/usr/sbin/sshd", "/usr/libexec/sshd-session"].contains(peerExecutable) {
+            return .remoteUnmanaged
+        }
+        return .unknown
     }
 
     static func runningProviders(detected: [HarnessDetection], applicationPaths: Set<String>,

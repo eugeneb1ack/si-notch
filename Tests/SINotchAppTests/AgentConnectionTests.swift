@@ -404,6 +404,34 @@ final class AgentConnectionTests: XCTestCase {
         }
     }
 
+    func testOnlyKnownSSHPeerExecutablesConfirmUnmanagedRemoteOrigin() {
+        let helper = URL(fileURLWithPath: "/Applications/si-notch.app/Contents/Helpers/si-notchctl")
+        XCTAssertEqual(AgentConnection.receivingOrigin(peerExecutable: helper.path, helperURL: helper), .local)
+        for path in ["/usr/bin/ssh", "/usr/sbin/sshd", "/usr/libexec/sshd-session"] {
+            XCTAssertEqual(AgentConnection.receivingOrigin(peerExecutable: path, helperURL: helper), .remoteUnmanaged)
+        }
+        for path in [nil, "/tmp/ssh", "/usr/bin/python3"] {
+            XCTAssertEqual(AgentConnection.receivingOrigin(peerExecutable: path, helperURL: helper), .unknown)
+        }
+    }
+
+    @MainActor func testUnmanagedSSHOriginCannotAdoptLocalIdentityOrCreateUnscopedTask() throws {
+        let defaults = UserDefaults(suiteName: "si-notch.unmanaged-ssh-tests." + UUID().uuidString)!
+        let model = AppModel(defaults: defaults)
+        defer { model.shutdown() }
+        let event = AgentEvent(sessionID: "remote-task", provider: "hermes", kind: .working,
+            connectionID: "p", connectionName: "Remote")
+        model.receive(try JSONEncoder().encode(event), origin: .remoteUnmanaged) { _ in }
+        XCTAssertEqual(model.store.sessions[event.sessionID]?.status, .working)
+        XCTAssertTrue(model.isRemoteSession(try XCTUnwrap(model.store.sessions[event.sessionID])))
+        model.receive(try JSONEncoder().encode(event), origin: .local) { response in
+            XCTAssertTrue(String(decoding: response, as: UTF8.self).contains("connection_origin_conflict"))
+        }
+        let unnamed = AgentEvent(sessionID: "unnamed", provider: "hermes", kind: .working)
+        model.receive(try JSONEncoder().encode(unnamed), origin: .remoteUnmanaged) { _ in }
+        XCTAssertNil(model.store.sessions["unnamed"])
+    }
+
     func testSameConnectionIDInAnotherProviderCannotStealSSHGrouping() {
         let now = Date(), connector = UUID()
         let other = AgentConnection.Observation(provider: "custom", connectionID: "shared", name: "Local custom",

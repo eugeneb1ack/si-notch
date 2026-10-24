@@ -20,6 +20,20 @@ with mock.patch.dict(sys.modules, yaml=yaml_fixture):
 
 
 class RemoteSetupTests(unittest.TestCase):
+    def test_new_bundle_updates_configure_tool_and_tracks_it_in_snapshot(self):
+        source = (ROOT / 'plugins/hermes/configure.py').read_bytes()
+        self.request['sources']['configure'] = base64.b64encode(source).decode()
+        result = self.preview()
+        self.assertIn(str(self.home / 'plugins/si-notch/configure.py'), result['paths'])
+        self.assertIn(str(self.profile / 'plugins/si-notch/configure.py'), result['paths'])
+        self.assertEqual(result['file_count'], 9)
+        receipt = setup.apply(self.request, self.home, self.cli, self.relay, self.socket)
+        self.assertTrue(receipt['changed'])
+        self.assertEqual((self.profile / 'plugins/si-notch/configure.py').read_bytes(), source)
+        snapshot = setup.inspect(self.home, self.relay, self.socket)[0]['snapshot']
+        (self.profile / 'plugins/si-notch/configure.py').write_bytes(source + b'\n')
+        self.assertNotEqual(setup.inspect(self.home, self.relay, self.socket)[0]['snapshot'], snapshot)
+
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)

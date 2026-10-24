@@ -91,6 +91,9 @@ def setup(args):
         outbox = safe(PLUGIN / "usage-outbox")
         if outbox.exists() and (not outbox.is_dir() or any(outbox.iterdir())):
             raise ValueError("Pending usage belongs to the existing identity. Deliver it with that identity before assigning a new one; do not copy another profile's usage-outbox into a clone.")
+        lifecycle = safe(PLUGIN / "lifecycle-outbox")
+        if lifecycle.exists() and (not lifecycle.is_dir() or any(lifecycle.iterdir())):
+            raise ValueError("Pending lifecycle events belong to the existing identity. Deliver them before assigning a new one.")
     if args.new_instance or not isinstance(instance, str) or not instance or len(instance) > 4096:
         value["instanceId"] = uuid.uuid4().hex
     if args.show_text is not None:
