@@ -31,6 +31,20 @@ Replace `VERSION` with the version in `release.json`. Keep the Ed25519 private k
 
 [GitHub Actions](../.github/workflows/ci.yml) tests the source, verifies the ZIP and builds the DMG on each push and pull request. Release signing and publication run locally with the maintainer’s key. No GitHub token is shipped in the app.
 
+## Release retention
+
+The [Release retention workflow](../.github/workflows/release-retention.yml) runs after each stable or beta release is published, including manual publication on GitHub. It keeps three published releases ordered by publication time, reserving one of those slots for the current **Latest** stable release. Older release records and their assets are deleted. Drafts, Git tags and source history are preserved.
+
+Cleanup runs sequentially, uses the script from the default branch and rechecks Latest before each deletion. API errors or inconsistent metadata stop the cleanup. A failed cleanup does not roll back the new release; rerun **Actions → Release retention → Run workflow** after resolving the error. The cleanup job uses GitHub’s temporary token with `contents: write`; it needs no additional secret. If publication moves into another workflow using `GITHUB_TOKEN`, explicitly dispatch this workflow afterward because those release events do not trigger another workflow.
+
+To preview the current plan locally with an authenticated GitHub CLI:
+
+```sh
+python3 scripts/prune-releases.py --repo eugeneb1ack/si-notch
+```
+
+Deletion requires `--apply`. The normal publication command needs no additional step.
+
 ## Plugin announcements
 
 `release.json` may include `pluginUpdates`, an array of up to 20 entries with unique `id`, `name`, `version`, `change` (`added` or `updated`) and `installURL`. Installation links must be HTTPS GitHub repository pages. The release packager includes this metadata in the signed feed and the app bundle. Keep the list scoped to plugins introduced or changed in that release; use a versioned GitHub installation page.
