@@ -1,0 +1,1 @@
+- Prevent stale idle sessions from showing duplicate local agents.

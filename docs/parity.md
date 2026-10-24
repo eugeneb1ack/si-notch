@@ -2,7 +2,11 @@
 
 # Feature status
 
-Available features and verification scope for 0.4.31 on Apple Silicon. Automated adapter tests use controlled inputs; they do not establish compatibility with every agent version or a complete model session.
+Available features and verification scope for 0.4.32 on Apple Silicon. Automated adapter tests use controlled inputs; they do not establish compatibility with every agent version or a complete model session.
+
+## Changes in 0.4.32
+
+Old unnamed idle sessions no longer retain an extra application row beside a fresh confirmed local profile. Fresh unnamed events and independent working, waiting, approval and failed tasks remain separate. Regression tests cover missing/stale receipts, the 120-second freshness boundary and task activity isolation; the full automated suite passed. Manual UI validation was not repeated for this patch.
 
 ## Changes in 0.4.31
 
