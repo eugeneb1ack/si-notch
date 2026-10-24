@@ -212,6 +212,24 @@ final class AgentConnectionTests: XCTestCase {
         XCTAssertEqual(rows.map(\.id), [local.id], "Finished legacy tasks are not another live agent")
     }
 
+    func testIdleLegacySessionNeedsFreshReceiptToCoexistWithLocalProfile() {
+        let now = Date(timeIntervalSince1970: 1000), old = now.addingTimeInterval(-300)
+        let local = presence("local", at: now)
+        let idle = AgentSession(id: "old-idle", provider: "hermes", status: .idle, createdAt: old)
+        let cases: [(Date?, Bool)] = [
+            (nil, false), (old, false), (now.addingTimeInterval(-121), false),
+            (now.addingTimeInterval(-120), true), (now, true)
+        ]
+        for (receipt, showsLegacy) in cases {
+            let rows = AgentConnection.project(detected: [hermesDetection()], sessions: [idle],
+                receipts: receipt.map { ["hermes": $0] } ?? [:], running: ["hermes"], now: now,
+                connections: [local.id: local])
+            XCTAssertEqual(Set(rows.map(\.id)), showsLegacy ? ["hermes", local.id] : [local.id])
+            XCTAssertEqual(rows.filter { $0.state == .online }.count, showsLegacy ? 2 : 1)
+            XCTAssertTrue(rows.allSatisfy { $0.activeTaskCount == 0 && $0.activity == .idle })
+        }
+    }
+
     func testRemoteOrUnknownOrStaleProfilesCannotReplaceLocalApplication() {
         let now = Date(), connector = UUID()
         for origin: AgentConnection.Origin in [.unknown, .remote(connector), .local] {
@@ -243,16 +261,21 @@ final class AgentConnectionTests: XCTestCase {
     }
 
     func testIndependentLegacySessionKeepsItsOwnActivityAndFreshness() {
-        let now = Date(), local = presence("local", at: Date())
-        let task = AgentSession(id: "legacy", provider: "hermes", status: .working)
-        for seen in [now, now.addingTimeInterval(-300)] {
-            let rows = AgentConnection.project(detected: [hermesDetection()], sessions: [task], receipts: ["hermes": seen],
-                running: ["hermes"], now: now, connections: [local.id: local])
-            XCTAssertEqual(Set(rows.map(\.id)), ["hermes", local.id])
-            let legacy = rows.first { $0.id == "hermes" }
-            XCTAssertEqual(legacy?.state, seen == now ? .online : .lastSeen)
-            XCTAssertEqual(legacy?.activeTaskCount, seen == now ? 1 : 0)
-            XCTAssertEqual(rows.first { $0.id == local.id }?.activeTaskCount, 0)
+        let now = Date(timeIntervalSince1970: 1000), old = now.addingTimeInterval(-300)
+        let local = presence("local", at: now)
+        for status: AgentStatus in [.working, .waiting, .approval, .failed] {
+            let task = AgentSession(id: "legacy", provider: "hermes", status: status, createdAt: old)
+            for seen in [nil, old, now] as [Date?] {
+                let rows = AgentConnection.project(detected: [hermesDetection()], sessions: [task],
+                    receipts: seen.map { ["hermes": $0] } ?? [:], running: ["hermes"], now: now,
+                    connections: [local.id: local])
+                XCTAssertEqual(Set(rows.map(\.id)), ["hermes", local.id])
+                let legacy = rows.first { $0.id == "hermes" }
+                XCTAssertEqual(legacy?.state, seen == now ? .online : .lastSeen)
+                XCTAssertEqual(legacy?.activeTaskCount, seen == now ? 1 : 0)
+                XCTAssertEqual(legacy?.activity, seen == now ? (status == .working ? .working : .attention) : .unknown)
+                XCTAssertEqual(rows.first { $0.id == local.id }?.activeTaskCount, 0)
+            }
         }
     }
 

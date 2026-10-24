@@ -98,7 +98,8 @@ struct AgentConnection: Identifiable, Equatable {
         }.map(\.provider))
         // Discovery is a fallback for an application, not another profile. Only
         // independent legacy activity may coexist with a confirmed local profile.
-        let independentLegacy = Set(legacySessions.filter { $0.status.isActive || $0.status == .idle || $0.status == .failed }.map(\.provider))
+        // Idle sessions need a fresh receipt to prove a separate live agent.
+        let independentLegacy = Set(legacySessions.filter { $0.status.isActive || $0.status == .failed }.map(\.provider))
             .union(receipts.filter { isFresh($0.value, at: now) }.keys)
         let providers = installed.union(legacyByProvider.keys).union(receipts.keys).union(running)
             .filter { !localProviders.contains($0) || independentLegacy.contains($0) }
