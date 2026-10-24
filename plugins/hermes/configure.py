@@ -94,6 +94,9 @@ def setup(args):
         lifecycle = safe(PLUGIN / "lifecycle-outbox")
         if lifecycle.exists() and (not lifecycle.is_dir() or any(lifecycle.iterdir())):
             raise ValueError("Pending lifecycle events belong to the existing identity. Deliver them before assigning a new one.")
+        executions = safe(PLUGIN / "active-executions")
+        if executions.exists() and (not executions.is_dir() or any(executions.iterdir())):
+            raise ValueError("Tracked executions belong to the existing identity. Reconcile them before assigning a new one.")
     if args.new_instance or not isinstance(instance, str) or not instance or len(instance) > 4096:
         value["instanceId"] = uuid.uuid4().hex
     if args.show_text is not None:

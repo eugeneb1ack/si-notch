@@ -1,0 +1,2 @@
+- Fix tasks remaining active after interrupted work is restarted.
+- Improve recovery of completed task statuses after a connection loss.

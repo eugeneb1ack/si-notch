@@ -17,6 +17,16 @@ configure = importlib.util.module_from_spec(spec); spec.loader.exec_module(confi
 
 
 class ConfigureTests(unittest.TestCase):
+    def test_new_identity_refuses_tracked_executions_and_preserves_settings(self):
+        self.setup_plugin()
+        before = (self.plugin / 'si-notch.json').read_bytes()
+        executions = self.plugin / 'active-executions'
+        executions.mkdir(); (executions / 'pending.json').write_text('{}')
+        code, result = self.call('setup', '--name', 'Clone', '--new-instance')
+        self.assertNotEqual(code, 0)
+        self.assertEqual((self.plugin / 'si-notch.json').read_bytes(), before)
+        self.assertTrue((executions / 'pending.json').exists())
+
     def test_new_identity_refuses_pending_lifecycle_and_preserves_settings(self):
         self.setup_plugin()
         settings = self.plugin / 'si-notch.json'
