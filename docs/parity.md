@@ -2,7 +2,11 @@
 
 # Feature status
 
-Available features and verification scope for 0.4.33 on Apple Silicon. Automated adapter tests use controlled inputs; they do not establish compatibility with every agent version or a complete model session.
+Available features and verification scope for 0.4.34 on Apple Silicon. Automated adapter tests use controlled inputs; they do not establish compatibility with every agent version or a complete model session.
+
+## Changes in 0.4.34
+
+A managed worker’s missing final hook is recovered from its committed native admission/execution outcome using a private journal of opaque identities. The existing heartbeat reads only its own profile ledger; it never infers success from silence or changes native data. A confirmed interrupted execution closes without success; unknown remains waiting. Generation, epoch and latest-turn checks protect newer work. A real telemetry outage retained a completed receipt until reconnect. A real target-scoped worker restart reproduced stale Working with plugin 1.14; repeating the native interruption with 1.15 automatically closed the old card and restored idle. Abrupt SIGKILL and host crashes were not exercised.
 
 ## Changes in 0.4.33
 

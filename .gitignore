@@ -8,6 +8,7 @@ research-private/
 __pycache__/
 **/usage-outbox/
 **/lifecycle-outbox/
+**/active-executions/
 *.py[cod]
 .env
 .env.*

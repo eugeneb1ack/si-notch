@@ -49,6 +49,8 @@ public struct AgentEvent: Codable, Equatable, Sendable {
     public var modelName: String?
     public var reasoningEffort: String?
     public var firstPrompt: String?
+    /// Hermes session.end with a turn ID closes that execution; without it,
+    /// the event finalizes the durable session until another session.start.
     public var turnID: String?
     /// Native Codex source classification; nil means this observer has no metadata.
     public var isInternalSession: Bool?
