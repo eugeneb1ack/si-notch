@@ -4,7 +4,7 @@
 
 将远程 Hermes 的任务、可见助手消息、工具开始/结束/失败、最终回答与完成状态显示在 Mac 刘海中；Agents 按连接分组显示各配置。
 
-插件 **1.13**。需要 **si-notch 0.4.31 或更新版本** 和 Hermes 环境中的 Python 3.10+。远程连接还需要可信 SSH 密钥登录及 Unix 套接字转发。仅使用标准库与现有解释器，无需 pip 依赖、模型凭据、TCP 监听器或新服务。
+插件 **1.14**。需要 **si-notch 0.4.33 或更新版本** 和 Hermes 环境中的 Python 3.10+。远程连接还需要可信 SSH 密钥登录及 Unix 套接字转发。仅使用标准库与现有解释器，无需 pip 依赖、模型凭据、TCP 监听器或新服务。
 
 模型和推理模式来自当前原生 API 请求，会话项目来自 Hermes 的会话目录 API。任务来自结构化 todo_list 结果，子代理状态来自其生命周期事件。任务标题遵循现有文本共享设置；完整请求、推理文本及其他工具内容不会传输。可在 Display → Session details 中独立控制每个字段。旧版 Hermes 可能不提供部分字段。
 
@@ -14,11 +14,11 @@
 
 每个新配置都需要独立 `instanceId`，同一 Mac 上也一样；安装器自动创建它。更新时保留现有 ID、文本偏好、socket/helper 和 `usage-outbox`，不要先删除插件。不要复制其他配置的设置或待发送用量。只有明确新建的克隆误用了原 ID 时，才在克隆中运行 `configure.py setup --name "Clone" --new-instance`；原设置会备份。普通更新不要使用这个选项。
 
-使用[本次发布的 REVISION.md](https://github.com/eugeneb1ack/si-notch/tree/v0.4.31/plugins/hermes/REVISION.md) 中的完整 SHA 进行原生安装。现有插件 1.12 与应用 0.4.31 兼容，Mac 更新不要求重装远程配置。
+使用[本次发布的 REVISION.md](https://github.com/eugeneb1ack/si-notch/tree/v0.4.33/plugins/hermes/REVISION.md) 中的完整 SHA 进行原生安装。现有插件 1.12 与应用 0.4.33 兼容，Mac 更新不要求重装远程配置。
 
 ## 推荐：通过 si-notch 设置
 
-1. 在 Mac 安装 si-notch 0.4.31 或更新版本，或通过 **Settings → About** 更新。
+1. 在 Mac 安装 si-notch 0.4.33 或更新版本，或通过 **Settings → About** 更新。
 2. **Remote SSH → Add connection**：填写连接名称与 SSH 主机/别名。**Check connection** 只验证登录。
 3. **Check profiles**：选择配置、显示名称及是否共享消息文本。
 4. **Preview changes → Apply plugin changes**：安装应用内置插件及中继，保留远程备份。检查实际激活结果；未运行网关的配置会在下次启动时加载。
@@ -34,7 +34,7 @@
 此目录是名为 `si-notch` 的完整插件。内置 `relay.py` 通过 Python 运行，不依赖可执行权限。使用 [REVISION.md](REVISION.md) 中经验证的 40 位提交 SHA：
 
 ```sh
-hermes plugins install eugeneb1ack/si-notch/plugins/hermes --ref 0cc545064c5ff3dbd39f635d3fd9b1b46d51a3bd --no-enable
+hermes plugins install eugeneb1ack/si-notch/plugins/hermes --ref 50d5fd9bbe872d770830cddb96584700411490b0 --no-enable
 python3 "$HOME/.hermes/plugins/si-notch/configure.py" setup --name "Remote Hermes" --hide-text
 hermes plugins enable si-notch
 ```

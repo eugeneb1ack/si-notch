@@ -1,5 +1,24 @@
 # Current revision
 
+Plugin **1.14**, bundled with app **0.4.33**, persists outcome receipts until delivery is acknowledged, retries them through the existing heartbeat and avoids process-local sequence counters. Auxiliary/compression requests do not start task activity. Tool-only fallback IDs are accepted only after session/LLM lifecycle established their identity. The event format and registered hooks remain compatible.
+
+Immutable runtime source: [`50d5fd9bbe872d770830cddb96584700411490b0`](https://github.com/eugeneb1ack/si-notch/tree/50d5fd9bbe872d770830cddb96584700411490b0/plugins/hermes).
+
+```sh
+hermes plugins install eugeneb1ack/si-notch/plugins/hermes --ref 50d5fd9bbe872d770830cddb96584700411490b0 --no-enable
+```
+
+The private lifecycle outbox contains opaque routing and outcome metadata, never task text or tool output. Updates preserve settings and pending queues; explicit clone identity changes are refused while either outbox is nonempty. Automated regressions cover rejected ACKs, identical replay, worker restarts, auxiliary activity, missing outcomes and same-turn terminal fencing. Historical packets that were never recorded cannot be reconstructed as successful outcomes.
+
+| File | SHA-256 |
+| --- | --- |
+| `__init__.py` | `303d3faea61b0ee8b98395ec9e78d8cd1d1687f5aadf5c34051ed37c8a2bcc98` |
+| `plugin.yaml` | `8c54fca1dda68407d72605a44232a296fe57b73f560e96205f9f8495a1d5a884` |
+| `relay.py` | `b387d9f5b6d22bd3a76cf51f4b44a845c3bb67d5b2e13cf2866123f173a24728` |
+| `configure.py` | `2a24af2e874e9ff35fdb77d318e1b6806e9274658ca99ef9c63b4c034760ae60` |
+
+# Previous plugin 1.13
+
 Plugin **1.13**, bundled with app **0.4.31**, uses the native Mac helper for delivery checks when available and adds an explicit `setup --new-instance` operation for a deliberately cloned profile. A clone identity change is refused while its usage queue is nonempty. Ordinary setup and updates preserve the existing identity, text preference, helper/socket settings, unknown fields and pending usage queue. The lifecycle observer and its event format are unchanged from 1.12.
 
 Immutable runtime source: [`0cc545064c5ff3dbd39f635d3fd9b1b46d51a3bd`](https://github.com/eugeneb1ack/si-notch/tree/0cc545064c5ff3dbd39f635d3fd9b1b46d51a3bd/plugins/hermes). The native installer requires this full commit SHA, not a tag or branch.

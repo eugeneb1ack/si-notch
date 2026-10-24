@@ -1,0 +1,2 @@
+- Improve task status recovery and prevent completed tasks from returning to Working.
+- Show temporary explanations when remote sessions cannot be opened locally.
