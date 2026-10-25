@@ -47,7 +47,7 @@ The table describes capabilities, not live end-to-end verification of every prov
 
 ### Desktop task lifecycle
 
-Thread discovery and read-state notifications subscribe to local state without creating a task. History-only rollout observations reconcile the archive without admitting a live session. A Desktop task requires a concrete in-progress turn or an explicit live lifecycle observation. Its completion is emitted only for an observed turn; subsequent history snapshots and metadata changes cannot replay that outcome. Concrete completed, failed or interrupted turn states take precedence over stale thread runtime flags. A genuinely new turn in the same conversation can establish activity again.
+Thread discovery and read-state notifications subscribe to local state without creating a task. History-only rollout observations reconcile the archive without admitting a live session. A Desktop task requires a concrete in-progress turn or an explicit live lifecycle observation. Its completion is emitted only for an observed turn; subsequent history snapshots and metadata changes cannot replay that outcome. Concrete completed, failed or interrupted turn states take precedence over stale thread runtime flags. A genuinely new turn in the same conversation can establish activity again. Older file hints cannot replace a more recent observed turn; revision-checked stream activity takes precedence even when a file clock is ahead.
 
 ### Socket limits
 

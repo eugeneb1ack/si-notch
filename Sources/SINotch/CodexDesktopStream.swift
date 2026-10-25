@@ -224,21 +224,29 @@ final class CodexDesktopStream: @unchecked Sendable {
 /// Admission to the live task pool is scoped to an observed turn, independently
 /// of subscription/discovery and the feed's metadata/heartbeat deduplication.
 struct CodexDesktopActivity {
-    private struct Turn { let id: String? }
+    private struct Turn {
+        let id: String?
+        let observedAt: Date
+    }
     private var active: [String: Turn] = [:]
     private var ended: [String: String] = [:]
 
     mutating func observe(_ event: AgentEvent) {
         guard [.working, .toolStarted, .waiting, .approvalRequested].contains(event.kind),
               event.turnID == nil || ended[event.sessionID] != event.turnID else { return }
-        if event.turnID == nil, active[event.sessionID] != nil { return }
-        active[event.sessionID] = Turn(id: event.turnID)
+        if let current = active[event.sessionID] {
+            guard event.turnID != nil, event.timestamp >= current.observedAt else { return }
+        }
+        active[event.sessionID] = Turn(id: event.turnID, observedAt: event.timestamp)
     }
 
     mutating func accept(_ event: AgentEvent) -> Bool {
-        if [.working, .toolStarted, .waiting, .approvalRequested].contains(event.kind),
-           let id = event.turnID, ended[event.sessionID] == id { return false }
-        observe(event)
+        if [.working, .toolStarted, .waiting, .approvalRequested].contains(event.kind) {
+            if let id = event.turnID, ended[event.sessionID] == id { return false }
+            // The revision-checked stream is authoritative even if a file's
+            // clock is ahead. File hints above must remain chronological.
+            active[event.sessionID] = Turn(id: event.turnID, observedAt: event.timestamp)
+        }
         let turn = active[event.sessionID]
         let matches = turn.map { $0.id == nil || event.turnID == nil || $0.id == event.turnID } ?? false
         if event.kind.historyTerminalStatus != nil, let id = event.turnID ?? turn?.id {

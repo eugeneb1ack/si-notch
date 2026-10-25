@@ -246,4 +246,31 @@ final class CodexDesktopStreamTests: XCTestCase {
         activity.remove(id)
         XCTAssertFalse(activity.accept(event(.completed, turn)))
     }
+
+    func testDelayedFileActivityCannotReplaceCurrentStreamTurn() {
+        var activity = CodexDesktopActivity()
+        let id = UUID().uuidString, old = UUID().uuidString, current = UUID().uuidString
+        let now = Date()
+        func event(_ kind: AgentEventKind, _ turn: String, _ date: Date) -> AgentEvent {
+            AgentEvent(sessionID: id, provider: "codex", kind: kind, timestamp: date, turnID: turn)
+        }
+        XCTAssertTrue(activity.accept(event(.working, current, now)))
+        activity.observe(event(.working, old, now.addingTimeInterval(-1)))
+        XCTAssertTrue(activity.accept(event(.completed, current, now.addingTimeInterval(1))))
+    }
+
+    func testStreamTurnWinsOverFileClockSkewAndNewerFallbackCanResume() {
+        var activity = CodexDesktopActivity()
+        let id = UUID().uuidString, old = UUID().uuidString, current = UUID().uuidString, next = UUID().uuidString
+        let now = Date()
+        func event(_ kind: AgentEventKind, _ turn: String, _ offset: TimeInterval) -> AgentEvent {
+            AgentEvent(sessionID: id, provider: "codex", kind: kind,
+                timestamp: now.addingTimeInterval(offset), turnID: turn)
+        }
+        activity.observe(event(.working, old, 60))
+        XCTAssertTrue(activity.accept(event(.working, current, 0)))
+        XCTAssertTrue(activity.accept(event(.completed, current, 1)))
+        activity.observe(event(.working, next, 2))
+        XCTAssertTrue(activity.accept(event(.completed, next, 3)))
+    }
 }
