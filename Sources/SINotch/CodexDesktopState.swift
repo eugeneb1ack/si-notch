@@ -69,12 +69,16 @@ struct CodexDesktopState {
         })
         let runtime = root["threadRuntimeStatus"] as? [String: Any] ?? [:]
         let flags = runtime["activeFlags"] as? [String] ?? []
-        let active = runtime["type"] as? String == "active" || turn["status"] as? String == "inProgress"
-        let attention = Self.attentionRequest(in: root, turn: turn)
-        let kind: AgentEventKind = flags.contains("waitingOnApproval") ? .approvalRequested :
-            attention != nil || flags.contains("waitingOnUserInput") ? .waiting :
-            active ? .working : turn["status"] as? String == "failed" ? .failed :
-            turn["status"] as? String == "completed" ? .completed : .sessionStarted
+        let status = turn["status"] as? String
+        let terminal = ["completed", "failed", "interrupted", "cancelled"].contains(status ?? "")
+        // Runtime flags can lag behind a restored conversation. A concrete
+        // turn's outcome wins; loading a thread without a turn is not work.
+        let active = status == "inProgress"
+        let attention = terminal ? nil : Self.attentionRequest(in: root, turn: turn)
+        let kind: AgentEventKind = status == "completed" ? .completed : status == "failed" ? .failed :
+            terminal ? .sessionStarted : active && flags.contains("waitingOnApproval") ? .approvalRequested :
+            attention != nil || (active && flags.contains("waitingOnUserInput")) ? .waiting :
+            active ? .working : .sessionStarted
         let message = items.reversed().first { $0["type"] as? String == "agentMessage" && $0["phase"] as? String != "analysis" }
         let prompt = items.first { $0["type"] as? String == "userMessage" }
         let tool = active ? items.reversed().first { Self.toolName($0) != nil && $0["status"] as? String == "inProgress" } : nil

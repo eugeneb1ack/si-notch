@@ -453,7 +453,7 @@ final class CodexSessionObserver {
                 guard let self, self.isCurrent(currentGeneration) else { return }
                 let desktop = self.desktopScanner.poll()
                 let rollouts = self.scanner.poll(changedPaths: self.rolloutWatcher?.takeChanges())
-                self.desktopStream?.observe((rollouts + desktop).map { $0.event.sessionID })
+                self.desktopStream?.observe(rollouts + desktop)
                 // A fresh Desktop stream owns the lifecycle. File snapshots and
                 // log lines must not replay older states over its current turn.
                 let observations = (rollouts + desktop).filter {

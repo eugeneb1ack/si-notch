@@ -17,7 +17,7 @@ final class CodexDesktopStream: @unchecked Sendable {
     private var clientID: String?
     private var pending = Data()
     private var tracked: [String: Date] = [:]
-    private var taskSessions: Set<String> = []
+    private var activity = CodexDesktopActivity()
     private var feed = CodexDesktopFeed()
     private var subscribed: Set<String> = []
     private var resnapshotAt: [String: Date] = [:]
@@ -35,11 +35,14 @@ final class CodexDesktopStream: @unchecked Sendable {
         self.onInteractions = onInteractions
     }
 
-    func observe(_ ids: [String], now: Date = Date()) {
+    func observe(_ observations: [CodexSessionObservation], now: Date = Date()) {
         interactions.tick()
-        track(ids, activity: true, now: now)
+        for observation in observations where !observation.isHistoryOnly {
+            track([observation.event.sessionID], now: now)
+            activity.observe(observation.event)
+        }
         for (id, seen) in tracked where now.timeIntervalSince(seen) > 3600 {
-            follow(id, following: false); tracked[id] = nil; taskSessions.remove(id)
+            follow(id, following: false); tracked[id] = nil; activity.remove(id)
             feed.remove(id); subscribed.remove(id); resnapshotAt[id] = nil
             interactions.remove(id)
         }
@@ -50,10 +53,14 @@ final class CodexDesktopStream: @unchecked Sendable {
         subscribe(now: now)
     }
 
-    private func track(_ ids: [String], activity: Bool, now: Date) {
+    func discover(_ ids: [String], now: Date = Date()) {
+        track(ids, now: now)
+        observe([], now: now)
+    }
+
+    private func track(_ ids: [String], now: Date) {
         for id in ids where UUID(uuidString: id) != nil {
             tracked[id] = now
-            if activity { taskSessions.insert(id) }
         }
     }
 
@@ -76,7 +83,7 @@ final class CodexDesktopStream: @unchecked Sendable {
     func stop() {
         for id in subscribed { follow(id, following: false) }
         disconnect()
-        tracked.removeAll(); taskSessions.removeAll()
+        tracked.removeAll(); activity = CodexDesktopActivity()
     }
 
     private func connect() {
@@ -157,7 +164,7 @@ final class CodexDesktopStream: @unchecked Sendable {
            let id = params["conversationId"] as? String, UUID(uuidString: id) != nil {
             // Read-state events identify a local thread but do not establish
             // that it is running. Ignore all context and request its snapshot.
-            track([id], activity: false, now: Date())
+            track([id], now: Date())
             subscribe()
             return
         }
@@ -179,12 +186,10 @@ final class CodexDesktopStream: @unchecked Sendable {
             return
         }
         if let event = update.event {
-            if [.working, .waiting, .approvalRequested].contains(event.kind) {
-                tracked[id] = Date()
-                taskSessions.insert(id)
-            }
-            // Opening old history is discovery, not a newly completed task.
-            guard taskSessions.contains(id) else { return }
+            // Discovery and metadata updates cannot enroll a completed turn.
+            // A terminal snapshot closes only the turn we actually observed.
+            guard activity.accept(event) else { return }
+            tracked[id] = Date()
             onEvent(event, update.bootstrap)
         }
     }
@@ -214,6 +219,42 @@ final class CodexDesktopStream: @unchecked Sendable {
         pending.removeAll(); subscribed.removeAll(); feed = CodexDesktopFeed(); resnapshotAt.removeAll()
         retryAfter = Date().addingTimeInterval(5)
     }
+}
+
+/// Admission to the live task pool is scoped to an observed turn, independently
+/// of subscription/discovery and the feed's metadata/heartbeat deduplication.
+struct CodexDesktopActivity {
+    private struct Turn { let id: String? }
+    private var active: [String: Turn] = [:]
+    private var ended: [String: String] = [:]
+
+    mutating func observe(_ event: AgentEvent) {
+        guard [.working, .toolStarted, .waiting, .approvalRequested].contains(event.kind),
+              event.turnID == nil || ended[event.sessionID] != event.turnID else { return }
+        if event.turnID == nil, active[event.sessionID] != nil { return }
+        active[event.sessionID] = Turn(id: event.turnID)
+    }
+
+    mutating func accept(_ event: AgentEvent) -> Bool {
+        if [.working, .toolStarted, .waiting, .approvalRequested].contains(event.kind),
+           let id = event.turnID, ended[event.sessionID] == id { return false }
+        observe(event)
+        let turn = active[event.sessionID]
+        let matches = turn.map { $0.id == nil || event.turnID == nil || $0.id == event.turnID } ?? false
+        if event.kind.historyTerminalStatus != nil, let id = event.turnID ?? turn?.id {
+            ended[event.sessionID] = id
+        }
+        guard matches else { return false }
+        // An empty/loading snapshot cannot close a turn discovered in a log
+        // before Desktop has hydrated its current turn.
+        if event.kind == .sessionStarted, turn?.id == nil || event.turnID == nil { return false }
+        if event.kind.historyTerminalStatus != nil || event.kind == .sessionStarted {
+            active[event.sessionID] = nil
+        }
+        return true
+    }
+
+    mutating func remove(_ id: String) { active[id] = nil; ended[id] = nil }
 }
 
 /// Stream freshness is independent of socket connectivity. A connected but stale
