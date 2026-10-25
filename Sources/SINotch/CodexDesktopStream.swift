@@ -235,7 +235,8 @@ struct CodexDesktopActivity {
         guard [.working, .toolStarted, .waiting, .approvalRequested].contains(event.kind),
               event.turnID == nil || ended[event.sessionID] != event.turnID else { return }
         if let current = active[event.sessionID] {
-            guard event.turnID != nil, event.timestamp >= current.observedAt else { return }
+            guard event.turnID != nil, event.timestamp > current.observedAt ||
+                (event.timestamp == current.observedAt && event.turnID == current.id) else { return }
         }
         active[event.sessionID] = Turn(id: event.turnID, observedAt: event.timestamp)
     }
@@ -249,7 +250,9 @@ struct CodexDesktopActivity {
         }
         let turn = active[event.sessionID]
         let matches = turn.map { $0.id == nil || event.turnID == nil || $0.id == event.turnID } ?? false
-        if event.kind.historyTerminalStatus != nil, let id = event.turnID ?? turn?.id {
+        // An unrelated late outcome cannot move the completed-turn fence back.
+        if event.kind.historyTerminalStatus != nil, matches || ended[event.sessionID] == nil,
+           let id = event.turnID ?? turn?.id {
             ended[event.sessionID] = id
         }
         guard matches else { return false }

@@ -226,6 +226,7 @@ final class CodexDesktopStreamTests: XCTestCase {
         XCTAssertTrue(activity.accept(event(.waiting, next)))
         XCTAssertTrue(activity.accept(event(.completed, next)))
         XCTAssertFalse(activity.accept(event(.completed, next)))
+        XCTAssertFalse(activity.accept(event(.completed, old)))
         XCTAssertFalse(activity.accept(event(.working, next)))
     }
 
@@ -256,6 +257,7 @@ final class CodexDesktopStreamTests: XCTestCase {
         }
         XCTAssertTrue(activity.accept(event(.working, current, now)))
         activity.observe(event(.working, old, now.addingTimeInterval(-1)))
+        activity.observe(event(.working, old, now))
         XCTAssertTrue(activity.accept(event(.completed, current, now.addingTimeInterval(1))))
     }
 
