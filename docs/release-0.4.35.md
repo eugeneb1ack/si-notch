@@ -1,0 +1,1 @@
+- Fix completed conversations reappearing as active or newly finished tasks when browsing history.

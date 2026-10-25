@@ -29,7 +29,7 @@ import AppKit
         }
         model.setExpanded(true)
         delegate.panel.orderFrontRegardless()
-        queue.async { stream.observe([sessionID]) }
-        timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in queue.async { stream.observe([sessionID]) } }
+        queue.async { stream.discover([sessionID]) }
+        timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in queue.async { stream.discover([sessionID]) } }
     }
 }

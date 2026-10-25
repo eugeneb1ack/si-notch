@@ -2,7 +2,11 @@
 
 # Feature status
 
-Available features and verification scope for 0.4.34 on Apple Silicon. Automated adapter tests use controlled inputs; they do not establish compatibility with every agent version or a complete model session.
+Available features and verification scope for 0.4.35 on Apple Silicon. Automated adapter tests use controlled inputs; they do not establish compatibility with every agent version or a complete model session.
+
+## Changes in 0.4.35
+
+Browsing a completed conversation no longer enrolls it in the live task pool. History-only rollout reconciliation cannot establish activity. Desktop activity is bound to an observed turn, closes on its outcome, and rejects later snapshots of the same completed turn. A concrete terminal turn wins over stale runtime flags; an active runtime without an in-progress turn does not establish work. Regression tests cover archived discovery, changed completion snapshots, stale Working/Attention flags, turn isolation, new work in an old chat, parallel subscriptions, idle recovery, delayed file hints and stream authority under clock skew. On 2026-10-25, installed 0.4.35 (build 62) was checked by opening three old completed chats without submitting a message. Across 49 live status samples over 50 seconds, none reappeared in Sessions; the current running task remained Working. The replacement preserved 342 History/Usage/preferences files byte-for-byte before relaunch. New-turn and completion behavior were checked with controlled socket fixtures; a separate real new model turn was not submitted.
 
 ## Changes in 0.4.34
 

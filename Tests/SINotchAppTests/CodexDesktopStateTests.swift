@@ -179,6 +179,30 @@ final class CodexDesktopStateTests: XCTestCase {
         XCTAssertEqual(state.event(sessionID: id)?.kind, .completed)
     }
 
+    func testTerminalTurnWinsOverStaleRuntimeActivity() {
+        for (status, expected) in [("completed", AgentEventKind.completed), ("failed", .failed),
+                                   ("interrupted", .sessionStarted)] {
+            for flags in [[], ["waitingOnApproval"], ["waitingOnUserInput"]] {
+                var state = CodexDesktopState()
+                XCTAssertTrue(state.apply(["type": "snapshot", "revision": 1, "conversationState": [
+                    "id": id, "threadRuntimeStatus": ["type": "active", "activeFlags": flags],
+                    "turns": [["turnId": UUID().uuidString, "status": status, "items": []]]]]))
+                XCTAssertEqual(state.event(sessionID: id)?.kind, expected, status)
+                XCTAssertNil(state.event(sessionID: id)?.attentionRequestID)
+            }
+        }
+    }
+
+    func testLoadingRuntimeWithoutCurrentTurnIsNotWorking() {
+        for turns in [[], [["turnId": UUID().uuidString]]] {
+            var state = CodexDesktopState()
+            XCTAssertTrue(state.apply(["type": "snapshot", "revision": 1, "conversationState": [
+                "id": id, "threadRuntimeStatus": ["type": "active", "activeFlags": ["waitingOnApproval"]],
+                "turns": turns]]))
+            XCTAssertEqual(state.event(sessionID: id)?.kind, .sessionStarted)
+        }
+    }
+
     func testClassicTurnsAndSafeTokens() {
         var state = CodexDesktopState()
         XCTAssertTrue(state.apply(["type": "snapshot", "revision": 1, "conversationState": [
