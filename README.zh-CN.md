@@ -1,4 +1,6 @@
-https://github.com/user-attachments/assets/52cdd435-e6e2-4eb0-9136-d9001ee9d0f5
+**si-notch 演示**
+
+https://github.com/user-attachments/assets/9cf4d09d-76f1-4195-9552-4372971dfd0f
 
 [English](README.md) · [Русский](README.ru.md) · [简体中文](README.zh-CN.md)
 
