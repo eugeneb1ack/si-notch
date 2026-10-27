@@ -64,7 +64,7 @@ struct CodexInteractionState {
     private(set) var root: [String: Any] = [:]
     private var revision: Int?
     private static let fields: Set<String> = ["id", "cwd", "turns", "turnHistory", "history", "entitiesByKey",
-        "turnId", "turnStartedAtMs", "status", "type", "items", "content", "input", "text", "requests", "questions", "changes"]
+        "turnId", "turnStartedAtMs", "status", "type", "phase", "items", "content", "input", "text", "requests", "questions", "changes"]
 
     @discardableResult mutating func apply(_ change: [String: Any]) -> Bool {
         guard let next = change["revision"] as? Int else { return false }
@@ -165,8 +165,9 @@ struct CodexInteractionState {
                 requestID: encoded, detail: questions.isEmpty ? detail : "", questions: questions, actions: actions, cwd: cwd))
         }
         let answered = Self.answeredIDs(items)
+        let superseded = CodexDesktopState.supersededAsyncQuestionMessageIDs(items)
         for item in items where item["type"] as? String == "agentMessage" {
-            guard let messageID = item["id"] as? String,
+            guard let messageID = item["id"] as? String, !superseded.contains(messageID),
                   let questions = Self.questions(item["questions"], messageID: messageID) else { continue }
             let pending = questions.filter { !answered.contains($0.id) }
             guard !pending.isEmpty, let fingerprint = Self.json([sessionID, turnID, messageID, pending.map { [$0.id, $0.title, $0.options] as [Any] }]) else { continue }
