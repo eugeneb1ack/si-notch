@@ -47,6 +47,24 @@ final class CodexInteractionTests: XCTestCase {
         XCTAssertTrue(state.requests(sessionID: session).isEmpty)
         XCTAssertFalse(String(decoding: try JSONSerialization.data(withJSONObject: state.root), as: UTF8.self).contains("First\"}]}"))
     }
+    func testAsyncQuestionCardClearsWhenAgentContinuesAfterUserReply() throws {
+        var state = CodexInteractionState()
+        let twoQuestions: [String: Any] = ["type": "agentMessage", "id": "question-call", "questions": [
+            ["title": "Network?"], ["title": "VPN client?"]]]
+        state.apply(snapshot([twoQuestions]))
+        XCTAssertEqual(state.requests(sessionID: session).first?.questions.count, 2)
+        let firstOnly = "<send_user_message_question_reply>[{\"questionItemId\":\"[\\\"request_user_input_async\\\",\\\"question-call\\\",0]\",\"question\":\"\",\"answer\":\"First\"}]</send_user_message_question_reply>"
+        let items: [[String: Any]] = [twoQuestions,
+            ["type": "userMessage", "content": [["type": "text", "text": firstOnly]]],
+            ["type": "userMessage", "content": [["type": "text", "text": "A follow-up message"]]]]
+        state.apply(snapshot(items, revision: 2))
+        XCTAssertEqual(state.requests(sessionID: session).first?.questions.map(\.title), ["VPN client?"])
+        state.apply(snapshot(items + [["type": "agentMessage", "id": "continuation", "text": "Continuing", "phase": "commentary"]], revision: 3))
+        XCTAssertTrue(state.requests(sessionID: session).isEmpty)
+        state.apply(snapshot(items + [["type": "agentMessage", "id": "continuation", "text": "Continuing", "phase": "commentary"],
+                                      ["type": "agentMessage", "id": "new-question", "questions": [["title": "Still needed?"]]]], revision: 4))
+        XCTAssertEqual(state.requests(sessionID: session).first?.questions.map(\.title), ["Still needed?"])
+    }
     func testApprovalOnlyOffersAdvertisedDecisionsAndExactRule() throws {
         var state = CodexInteractionState()
         let rule = ["acceptWithExecpolicyAmendment": ["execpolicy_amendment": ["printf", "test"]]]

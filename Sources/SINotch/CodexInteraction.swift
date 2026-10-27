@@ -165,8 +165,9 @@ struct CodexInteractionState {
                 requestID: encoded, detail: questions.isEmpty ? detail : "", questions: questions, actions: actions, cwd: cwd))
         }
         let answered = Self.answeredIDs(items)
+        let superseded = CodexDesktopState.supersededAsyncQuestionMessageIDs(items)
         for item in items where item["type"] as? String == "agentMessage" {
-            guard let messageID = item["id"] as? String,
+            guard let messageID = item["id"] as? String, !superseded.contains(messageID),
                   let questions = Self.questions(item["questions"], messageID: messageID) else { continue }
             let pending = questions.filter { !answered.contains($0.id) }
             guard !pending.isEmpty, let fingerprint = Self.json([sessionID, turnID, messageID, pending.map { [$0.id, $0.title, $0.options] as [Any] }]) else { continue }

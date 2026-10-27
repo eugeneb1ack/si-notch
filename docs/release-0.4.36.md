@@ -1,0 +1,1 @@
+- Clear answered Codex questions from Attention when the conversation continues.

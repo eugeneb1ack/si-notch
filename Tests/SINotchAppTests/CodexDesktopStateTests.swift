@@ -147,6 +147,29 @@ final class CodexDesktopStateTests: XCTestCase {
         XCTAssertNil(state.event(sessionID: id)?.attentionRequestID)
     }
 
+    func testAsyncQuestionIsClearedWhenAgentContinuesAfterUserReply() throws {
+        let question: [String: Any] = ["type": "agentMessage", "id": "question-call", "questions": [[:], [:]]]
+        let turnID = UUID().uuidString
+        let firstAnswer = "<send_user_message_question_reply>[{\"questionItemId\":\"[\\\"request_user_input_async\\\",\\\"question-call\\\",0]\",\"question\":\"\",\"answer\":\"First\"}]</send_user_message_question_reply>"
+        let items: [[String: Any]] = [question,
+            ["type": "userMessage", "content": [["type": "text", "text": firstAnswer]]],
+            ["type": "userMessage", "content": [["type": "text", "text": "A follow-up message"]]]]
+        var state = CodexDesktopState()
+        func apply(_ items: [[String: Any]], revision: Int) {
+            XCTAssertTrue(state.apply(["type": "snapshot", "revision": revision, "conversationState": [
+                "id": id, "threadRuntimeStatus": ["type": "active", "activeFlags": []],
+                "turns": [["turnId": turnID, "status": "inProgress", "items": items]]]]))
+        }
+        apply(items, revision: 1)
+        XCTAssertEqual(state.event(sessionID: id)?.kind, .waiting)
+        apply(items + [["type": "agentMessage", "id": "continuation", "text": "Continuing", "phase": "commentary"]], revision: 2)
+        XCTAssertNil(state.event(sessionID: id)?.attentionRequestID)
+        XCTAssertEqual(state.event(sessionID: id)?.kind, .working)
+        apply(items + [["type": "agentMessage", "id": "continuation", "text": "Continuing", "phase": "commentary"],
+                       ["type": "agentMessage", "id": "new-question", "questions": [[:]]]], revision: 3)
+        XCTAssertNotNil(state.event(sessionID: id)?.attentionRequestID)
+    }
+
     func testDeltasKeepIndicesButNeverRetainToolOutput() throws {
         var state = CodexDesktopState(); XCTAssertTrue(state.apply(snapshot()))
         let base: [Any] = ["turnHistory", "history", "entitiesByKey", key, "items"]

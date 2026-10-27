@@ -2,7 +2,11 @@
 
 # Feature status
 
-Available features and verification scope for 0.4.35 on Apple Silicon. Automated adapter tests use controlled inputs; they do not establish compatibility with every agent version or a complete model session.
+Available features and verification scope for 0.4.36 on Apple Silicon. Automated adapter tests use controlled inputs; they do not establish compatibility with every agent version or a complete model session.
+
+## Changes in 0.4.36
+
+An asynchronous Codex question is removed from Attention when a user reply is followed by new agent output, even if Codex retains the original question metadata. Pending steering messages alone do not resolve it, and a later question remains visible. The affected live conversation was inspected read-only; automated regressions cover both the session status and the inline question card. The full test suite passed. On 2026-10-27, installed 0.4.36 (build 63) launched with a valid signature, the current Codex task remained Working, and the remote connection returned to Connected. The affected question was no longer live at restart, so its disappearance was not checked in the installed UI.
 
 ## Changes in 0.4.35
 
