@@ -64,7 +64,7 @@ struct CodexInteractionState {
     private(set) var root: [String: Any] = [:]
     private var revision: Int?
     private static let fields: Set<String> = ["id", "cwd", "turns", "turnHistory", "history", "entitiesByKey",
-        "turnId", "turnStartedAtMs", "status", "type", "items", "content", "input", "text", "requests", "questions", "changes"]
+        "turnId", "turnStartedAtMs", "status", "type", "phase", "items", "content", "input", "text", "requests", "questions", "changes"]
 
     @discardableResult mutating func apply(_ change: [String: Any]) -> Bool {
         guard let next = change["revision"] as? Int else { return false }

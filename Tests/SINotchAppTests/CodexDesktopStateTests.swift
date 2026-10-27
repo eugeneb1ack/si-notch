@@ -162,11 +162,14 @@ final class CodexDesktopStateTests: XCTestCase {
         }
         apply(items, revision: 1)
         XCTAssertEqual(state.event(sessionID: id)?.kind, .waiting)
-        apply(items + [["type": "agentMessage", "id": "continuation", "text": "Continuing", "phase": "commentary"]], revision: 2)
+        let analysis: [String: Any] = ["type": "agentMessage", "id": "analysis", "text": "Private thought", "phase": "analysis"]
+        apply(items + [analysis], revision: 2)
+        XCTAssertEqual(state.event(sessionID: id)?.kind, .waiting)
+        apply(items + [analysis, ["type": "agentMessage", "id": "continuation", "text": "Continuing", "phase": "commentary"]], revision: 3)
         XCTAssertNil(state.event(sessionID: id)?.attentionRequestID)
         XCTAssertEqual(state.event(sessionID: id)?.kind, .working)
-        apply(items + [["type": "agentMessage", "id": "continuation", "text": "Continuing", "phase": "commentary"],
-                       ["type": "agentMessage", "id": "new-question", "questions": [[:]]]], revision: 3)
+        apply(items + [analysis, ["type": "agentMessage", "id": "continuation", "text": "Continuing", "phase": "commentary"],
+                       ["type": "agentMessage", "id": "new-question", "questions": [[:]]]], revision: 4)
         XCTAssertNotNil(state.event(sessionID: id)?.attentionRequestID)
     }
 

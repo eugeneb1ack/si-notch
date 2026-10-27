@@ -59,10 +59,13 @@ final class CodexInteractionTests: XCTestCase {
             ["type": "userMessage", "content": [["type": "text", "text": "A follow-up message"]]]]
         state.apply(snapshot(items, revision: 2))
         XCTAssertEqual(state.requests(sessionID: session).first?.questions.map(\.title), ["VPN client?"])
-        state.apply(snapshot(items + [["type": "agentMessage", "id": "continuation", "text": "Continuing", "phase": "commentary"]], revision: 3))
+        let analysis: [String: Any] = ["type": "agentMessage", "id": "analysis", "text": "Private thought", "phase": "analysis"]
+        state.apply(snapshot(items + [analysis], revision: 3))
+        XCTAssertEqual(state.requests(sessionID: session).first?.questions.map(\.title), ["VPN client?"])
+        state.apply(snapshot(items + [analysis, ["type": "agentMessage", "id": "continuation", "text": "Continuing", "phase": "commentary"]], revision: 4))
         XCTAssertTrue(state.requests(sessionID: session).isEmpty)
-        state.apply(snapshot(items + [["type": "agentMessage", "id": "continuation", "text": "Continuing", "phase": "commentary"],
-                                      ["type": "agentMessage", "id": "new-question", "questions": [["title": "Still needed?"]]]], revision: 4))
+        state.apply(snapshot(items + [analysis, ["type": "agentMessage", "id": "continuation", "text": "Continuing", "phase": "commentary"],
+                                      ["type": "agentMessage", "id": "new-question", "questions": [["title": "Still needed?"]]]], revision: 5))
         XCTAssertEqual(state.requests(sessionID: session).first?.questions.map(\.title), ["Still needed?"])
     }
     func testApprovalOnlyOffersAdvertisedDecisionsAndExactRule() throws {
