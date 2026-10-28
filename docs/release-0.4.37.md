@@ -1,0 +1,1 @@
+- Fix an app-name label lingering on the desktop after switching windows or Spaces.

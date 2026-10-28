@@ -1041,9 +1041,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         model.focusPanel = { [weak self] in self?.panel.makeKey() }
         installMainMenu()
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        if let b = statusItem.button {
-            b.toolTip = "si-notch"
-        }
         refreshStatusIcon()
         observers.append(NotificationCenter.default.addObserver(forName: UserDefaults.didChangeNotification,
             object: nil, queue: .main) { [weak self] _ in
@@ -1093,7 +1090,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         observers.append(NotificationCenter.default.addObserver(forName: UserDefaults.didChangeNotification, object: nil, queue: .main) { [weak self] _ in Task { @MainActor in
             self?.model.reconcileFilters(); self?.model.refreshCodexObserver(); self?.layout(); self?.rebuildMenu(); self?.installMainMenu(); self?.installShortcut()
             self?.settingsWindow?.title = L10n.tr("si-notch · Настройки")
-            self?.statusItem.button?.toolTip = "si-notch"
         } })
         if CommandLine.arguments.contains("--settings") { showSettings() }
         else if !model.defaults.bool(forKey: "agentDiscoveryPresented") {
