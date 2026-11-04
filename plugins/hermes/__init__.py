@@ -357,6 +357,9 @@ def _lifecycle_directory() -> Path:
 
 
 def _queue_lifecycle(payload: dict) -> bool:
+    # Native-ledger recovery and live hooks share the same terminal boundary.
+    # Forget matching live state before delivery, including while disconnected.
+    _remember_activity(payload, terminal=True)
     # Persist outcome and opaque routing only; never persist task text/tool output.
     keep = {"event", "session_id", "provider", "id", "timestamp", "connection_id", "connection_name", "turn_id"}
     value = {key: data for key, data in payload.items() if key in keep}
@@ -610,8 +613,9 @@ def _emit(kind: str, session_id: object, *, tool_name: object = None,
     if kind in {"agent.working", "tool.start"} and isinstance(session_id, str):
         _track_execution(session_id, payload)
     if usage is not None: return _queue_usage(payload)
-    _remember_activity(payload, terminal=durable)
-    return _queue_lifecycle(payload) if durable else _send(payload)
+    if durable: return _queue_lifecycle(payload)
+    _remember_activity(payload, terminal=False)
+    return _send(payload)
 
 
 def _start_once(session_id: object) -> None:

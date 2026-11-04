@@ -32,6 +32,7 @@ class WorkerRecoveryTests(unittest.TestCase):
                     generation INTEGER, owner_epoch INTEGER, status TEXT, outcome TEXT);
             """)
         plugin._TRACKED_EXECUTIONS.clear(); plugin._EXECUTION_CURSOR = 0
+        plugin._ACTIVE_STATES.clear(); plugin._FINISHED_TURNS.clear()
         plugin._STARTED.clear(); plugin._METADATA.clear(); plugin._TASK_TITLES.clear()
         self.events = []
         self.patches = [
@@ -101,6 +102,29 @@ class WorkerRecoveryTests(unittest.TestCase):
                 plugin._drain_lifecycle(); plugin._reconcile_executions()
                 self.assertEqual(self.events, [saved])
                 self.assertFalse(receipt.exists())
+
+    def test_native_outcome_invalidates_live_snapshot_before_delivery(self):
+        for outcome, status in [("completed", "terminal"), ("failed", "terminal"),
+                                ("interrupted", "terminal"), (None, "unknown")]:
+            session = str(outcome)
+            with self.subTest(outcome=outcome):
+                self.start(session=session, admission=session, turn=session)
+                self.settle(outcome, admission=session, status=status)
+                with mock.patch.object(plugin, "_send", return_value=False):
+                    plugin._reconcile_executions()
+                self.events.clear()
+                plugin._refresh_active()
+                self.assertEqual(self.events, [], "a recovered outcome must not leave a replayable Working snapshot")
+                plugin._drain_lifecycle()
+
+    def test_old_reconciled_outcome_preserves_newer_live_turn(self):
+        self.start(); self.settle("completed")
+        payload = {"event": "agent.working", "session_id": plugin._session_key("native-session"),
+                   "turn_id": "turn-newer", "timestamp": 2_000_000_000}
+        plugin._remember_activity(payload, terminal=False)
+        plugin._reconcile_executions(); self.events.clear()
+        plugin._refresh_active()
+        self.assertEqual(self.events, [payload])
 
     def test_unknown_is_not_success_and_can_later_reconcile_a_committed_resolution(self):
         self.start(); self.settle(None, status="unknown"); self.events.clear()
