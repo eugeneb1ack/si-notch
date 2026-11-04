@@ -36,7 +36,7 @@
 Возьмите проверенный полный SHA из [REVISION.md](REVISION.md):
 
 ```sh
-hermes plugins install eugeneb1ack/si-notch/plugins/hermes --ref 8eaa6bc5e9773e3b2005876cf85ea91b1928ce73 --no-enable
+hermes plugins install eugeneb1ack/si-notch/plugins/hermes --ref 1e20bcf46aaec8f1292f189cdbce6f9b641139a3 --no-enable
 python3 "$HOME/.hermes/plugins/si-notch/configure.py" setup --name "Мой Hermes" --hide-text
 hermes plugins enable si-notch
 ```
