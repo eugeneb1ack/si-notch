@@ -1,5 +1,24 @@
 # Current revision
 
+Plugin **1.16**, bundled with app **0.4.38**, restores active sessions after a telemetry reconnect or Mac app restart. The live observer keeps a bounded in-memory snapshot of each current task and retries it before historical queues, preserving the original event ID and timestamp. Terminal turns leave that cache; a heartbeat never invents new task progress. Snapshots are not persisted and cannot survive the owning process. Text sharing is rechecked before retry.
+
+The Mac app acknowledges orphaned completion receipts without creating empty session cards, repairs an existing History entry when available, and retains the actual completion time for known tasks. Remote setup refreshes both the gateway and a compatible running API/dashboard sidecar. Automated coverage includes reconnect replay, late outcomes, cleared cards, history repair, privacy changes, bounded caches and profile-scoped activation. On 2026-11-04, installed app 0.4.38 and the observer in eight remote profiles were checked on macOS. A real API run remained Working through a target-scoped SSH interruption (reconnected in 2.43 seconds); restarting the Mac app restored the same active session and original event time in 1.79 seconds, before another tool event. The visible card then reached Done with its actual final response. Both commands and the native completed run were verified. The API listener shares the reloaded gateway process on this host; the separate Web UI did not confirm hot activation and is not covered by that live claim. Long physical network outages, host crashes and other runtime entry points remain unverified.
+
+Immutable runtime source: [`8eaa6bc5e9773e3b2005876cf85ea91b1928ce73`](https://github.com/eugeneb1ack/si-notch/tree/8eaa6bc5e9773e3b2005876cf85ea91b1928ce73/plugins/hermes).
+
+```sh
+hermes plugins install eugeneb1ack/si-notch/plugins/hermes --ref 8eaa6bc5e9773e3b2005876cf85ea91b1928ce73 --no-enable
+```
+
+| File | SHA-256 |
+| --- | --- |
+| `__init__.py` | `3e89c866e84ea90e0cf2eca9aef3fb702375532ab34cbca928654b860ce89677` |
+| `plugin.yaml` | `14fead58d1010f6f199874a22819cd1b12a09fa49587f3fb46759dda07ff173b` |
+| `relay.py` | `b387d9f5b6d22bd3a76cf51f4b44a845c3bb67d5b2e13cf2866123f173a24728` |
+| `configure.py` | `acfab38546654040b3563517cf44e29ca881fb7d3ea279a6e3193cf82f12762b` |
+
+# Previous plugin 1.15
+
 Plugin **1.15**, bundled with app **0.4.34**, recovers a managed worker’s missing final hook from the committed native execution ledger. The existing heartbeat reads only its own profile database. A private `active-executions` journal records opaque admission/execution and turn identities before activity is delivered; no prompts, tool content or native database writes are involved. Successful, failed, interrupted and unknown outcomes remain distinct. A confirmed interrupted worker closes without success; an unknown execution remains waiting. Generation, owner epoch and latest-turn checks prevent another execution’s outcome from changing the current task. Unsupported schemas retain hook-only behavior.
 
 Immutable runtime source: [`52b6de6fba263745db245f4672e859ca24bc2754`](https://github.com/eugeneb1ack/si-notch/tree/52b6de6fba263745db245f4672e859ca24bc2754/plugins/hermes).

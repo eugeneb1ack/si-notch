@@ -4,7 +4,7 @@
 
 Show Hermes tasks in your Mac's notch: session state, tools, subagents, optional assistant text, token usage and separate profile availability. Works locally on the Mac or through an existing SSH connection.
 
-Plugin **1.15**, bundled with **si-notch 0.4.34**. Use Python 3.10+ from the existing Hermes installation. The plugin needs no pip packages, model credentials, TCP listener or additional service. Remote use also requires trusted key-based SSH login and Unix-socket forwarding. [Revision and verification](REVISION.md).
+Plugin **1.16**, bundled with **si-notch 0.4.38**. Use Python 3.10+ from the existing Hermes installation. The plugin needs no pip packages, model credentials, TCP listener or additional service. Remote use also requires trusted key-based SSH login and Unix-socket forwarding. [Revision and verification](REVISION.md).
 
 The plugin is an observer. Human-input notifications direct you to the original Hermes chat or terminal; it does not approve actions or submit answers. Metadata and usage depend on hooks exposed by the installed Hermes version. [Developer guide](../../docs/hermes-plugin-development.md).
 
@@ -27,7 +27,7 @@ The Mac binds app-managed SSH traffic to its connection's own endpoint. Keep usi
 
 ## Remote installation from si-notch
 
-1. Update the Mac app to 0.4.34 or newer. Open **Settings → Remote SSH → Add connection** and enter a connection name and SSH host/alias.
+1. Update the Mac app to 0.4.38 or newer. Open **Settings → Remote SSH → Add connection** and enter a connection name and SSH host/alias.
 2. **Check connection** verifies login only. **Check profiles** discovers existing Hermes profiles; select the profiles and their display names.
 3. Choose whether each profile may share task/assistant text. Text sharing defaults to off.
 4. **Preview changes → Apply plugin changes** installs the bundled observer and relay with backups and asks Hermes to reload. Review the result; a profile without a running gateway loads it on its next start.
@@ -40,10 +40,10 @@ App-managed setup installs the plugin bundled with that app. A native Git instal
 
 ## Native Hermes installation
 
-Install into the actual profile home, not a project-local `.hermes` directory. Read the full runtime SHA in the [release-specific REVISION.md](https://github.com/eugeneb1ack/si-notch/tree/v0.4.34/plugins/hermes/REVISION.md). The command below uses that immutable runtime commit:
+Install into the actual profile home, not a project-local `.hermes` directory. Read the full runtime SHA in the [release-specific REVISION.md](https://github.com/eugeneb1ack/si-notch/tree/v0.4.38/plugins/hermes/REVISION.md). The command below uses that immutable runtime commit:
 
 ```sh
-hermes plugins install eugeneb1ack/si-notch/plugins/hermes --ref 52b6de6fba263745db245f4672e859ca24bc2754 --no-enable
+hermes plugins install eugeneb1ack/si-notch/plugins/hermes --ref 8eaa6bc5e9773e3b2005876cf85ea91b1928ce73 --no-enable
 python3 "$HOME/.hermes/plugins/si-notch/configure.py" setup --name "My Hermes" --hide-text
 hermes plugins enable si-notch
 hermes plugins list
@@ -111,7 +111,7 @@ Recovery requires a refused connection, private ownership/permissions, a success
 
 ## Update, disable and remove
 
-Choose the tested full release SHA explicitly. Back up `si-notch.json`, pending `usage-outbox` / `lifecycle-outbox`, and `active-executions` outside the plugin directory. Preserve `instanceId`, text/helper/socket settings and unknown fields. A pinned native install needs an explicit re-pin through the installed CLI; review its source/scan and use the same official source. Do not remove the plugin first or pass `--new-instance` during an update. Older observers remain compatible, but worker-outcome recovery requires updating the remote observer to 1.15; installing the Mac app alone does not update remote code. Confirm the native installer’s activation/reload result; use a new session when necessary. Do not force replacement of a plugin from an unrelated source.
+Choose the tested full release SHA explicitly. Back up `si-notch.json`, pending `usage-outbox` / `lifecycle-outbox`, and `active-executions` outside the plugin directory. Preserve `instanceId`, text/helper/socket settings and unknown fields. A pinned native install needs an explicit re-pin through the installed CLI; review its source/scan and use the same official source. Do not remove the plugin first or pass `--new-instance` during an update. Older observers remain compatible, but active-session recovery after reconnect requires updating the remote observer to 1.16; installing the Mac app alone does not update remote code. Confirm the native installer’s activation/reload result; use a new session when necessary. Do not force replacement of a plugin from an unrelated source.
 
 ```sh
 hermes plugins disable si-notch
