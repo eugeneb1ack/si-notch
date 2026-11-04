@@ -118,6 +118,27 @@ final class HistoryIntegrationTests: XCTestCase {
     }
 
     @MainActor
+    func testRemoteOutcomeAfterRestartClosesHistoryWithoutCreatingACard() throws {
+        let suite = "si-notch.hermes-reconnect." + UUID().uuidString
+        let path = FileManager.default.temporaryDirectory.appendingPathComponent(suite)
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        let model = AppModel(defaults: defaults)
+        defer { model.shutdown(); defaults.removePersistentDomain(forName: suite); try? FileManager.default.removeItem(at: path) }
+        model.history.start(directory: path)
+        let session = AgentSession(id: "saved", provider: "hermes", title: "Remote task", status: .working)
+        model.history.record(AgentEvent(sessionID: "saved", provider: "hermes", kind: .working,
+            firstPrompt: "Remote task", turnID: "saved-turn"), session: session)
+        model.history.shutdown()
+        model.receive(try JSONEncoder().encode(AgentEvent(sessionID: "saved", provider: "hermes",
+            kind: .completed, turnID: "saved-turn"))) { _ in }
+        model.history.shutdown()
+        let archive = try HistoryStore(directory: path, policy: .init())
+        XCTAssertEqual(archive.ordered.count, 1)
+        XCTAssertEqual(archive.ordered.first?.status, .completed)
+        XCTAssertTrue(model.sessions.isEmpty)
+    }
+
+    @MainActor
     func testStreamingSnapshotsKeepLatestTextAndClearFencesTheBufferedTurn() throws {
         let path = FileManager.default.temporaryDirectory.appendingPathComponent("si-notch-history-stream-" + UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: path) }

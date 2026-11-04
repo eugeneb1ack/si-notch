@@ -145,7 +145,13 @@ public struct SessionStore: Sendable {
             case .taskUpdated, .subagentEnded, .usageUpdated, .agentPresence, .unknown: break
             }
         }
-        session.updatedAt = max(session.updatedAt, receivedAt)
+        if event.provider == "hermes", [.completed, .failed, .sessionEnded].contains(event.kind) {
+            // Reconnecting transports deliver the original outcome timestamp.
+            // Receipt time must not make yesterday's completion look new.
+            session.updatedAt = min(event.timestamp, receivedAt)
+        } else {
+            session.updatedAt = max(session.updatedAt, receivedAt)
+        }
         session.lastEventAt = max(session.lastEventAt, event.timestamp)
         session.lastEventID = event.id
         if let sequence = event.sequence { session.lastSequence = sequence }

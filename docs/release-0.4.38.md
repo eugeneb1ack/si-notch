@@ -1,0 +1,3 @@
+- Restore active remote sessions after reconnecting.
+- Prevent old completed sessions from reappearing as new tasks.
+- Preserve the original completion time of delayed remote updates.

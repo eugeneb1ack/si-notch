@@ -5,6 +5,28 @@ import SINotchCore
 
 final class AppModelTests: XCTestCase {
     @MainActor
+    func testReconnectedHermesOutcomesDoNotCreateOrResurrectCards() throws {
+        let model = makeModel()
+        defer { model.shutdown() }
+        for kind: AgentEventKind in [.completed, .failed, .sessionEnded] {
+            let event = AgentEvent(sessionID: kind.rawValue, provider: "hermes", kind: kind,
+                timestamp: Date().addingTimeInterval(-300), id: UUID().uuidString, turnID: "old")
+            var ack: [String: Any] = [:]
+            model.receive(try JSONEncoder().encode(event)) { ack = (try? JSONSerialization.jsonObject(with: $0)) as? [String: Any] ?? [:] }
+            XCTAssertEqual(ack["ok"] as? Bool, true)
+        }
+        XCTAssertTrue(model.sessions.isEmpty)
+        let working = AgentEvent(sessionID: "live", provider: "hermes", kind: .working, turnID: "current")
+        model.receive(try JSONEncoder().encode(working)) { _ in }
+        let done = AgentEvent(sessionID: "live", provider: "hermes", kind: .completed, turnID: "current")
+        model.receive(try JSONEncoder().encode(done)) { _ in }
+        XCTAssertEqual(model.store.sessions["live"]?.status, .completed)
+        model.dismiss("live")
+        model.receive(try JSONEncoder().encode(done)) { _ in }
+        XCTAssertTrue(model.sessions.isEmpty)
+    }
+
+    @MainActor
     func testCommonInteractionContractUsesExactHookForEveryProvider() throws {
         for provider in ["codex", "claude", "pi", "hermes", "custom"] {
             let model = makeModel()

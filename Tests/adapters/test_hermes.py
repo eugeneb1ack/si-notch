@@ -27,6 +27,62 @@ class Context:
 
 
 class HermesPluginTests(unittest.TestCase):
+    def test_reconnect_restores_latest_live_state_without_replaying_finished_tasks(self):
+        with mock.patch.object(plugin, "_send", return_value=False):
+            plugin.pre_llm_call(session_id="active", turn_id="turn", user_message="Task")
+            plugin.pre_tool_call(session_id="active", turn_id="turn", tool_name="terminal")
+            plugin.pre_llm_call(session_id="finished", turn_id="turn")
+            plugin.on_session_end(session_id="finished", turn_id="turn", completed=True)
+        with mock.patch.object(plugin, "_send", return_value=True) as send:
+            plugin._refresh_active()
+        self.assertEqual(send.call_count, 1)
+        restored = send.call_args.args[0]
+        self.assertEqual(restored["session_id"], plugin._session_key("active"))
+        self.assertEqual(restored["event"], "tool.start")
+        self.assertEqual(restored["tool_name"], "terminal")
+        with mock.patch.object(plugin, "_send", return_value=True) as send:
+            plugin._refresh_active()
+        self.assertEqual(send.call_args.args[0], restored, "refresh must not invent progress or duplicate activity")
+
+    def test_late_old_turn_does_not_erase_or_restore_current_activity(self):
+        with mock.patch.object(plugin, "_send", return_value=True):
+            plugin.pre_llm_call(session_id="s", turn_id="first")
+            plugin.pre_llm_call(session_id="s", turn_id="second")
+            plugin.on_session_end(session_id="s", turn_id="first", completed=True)
+        with mock.patch.object(plugin, "_send", return_value=True) as send:
+            plugin._refresh_active()
+        self.assertEqual(send.call_args.args[0]["turn_id"], plugin._opaque_id("second", "turn-"))
+        with mock.patch.object(plugin, "_send", return_value=True):
+            plugin.on_session_end(session_id="s", turn_id="second", completed=True)
+            plugin.pre_api_request(session_id="s", turn_id="second")
+        with mock.patch.object(plugin, "_send") as send:
+            plugin._refresh_active()
+        send.assert_not_called()
+
+    def test_active_refresh_is_bounded_and_rechecks_text_privacy(self):
+        settings = {"instanceId": "profile", "showSessionText": True}
+        with mock.patch.object(plugin, "_settings", return_value=settings), \
+             mock.patch.object(plugin, "_ACTIVE_LIMIT", 2), \
+             mock.patch.object(plugin, "_send", return_value=True):
+            for session in ("evicted", "one", "two"):
+                plugin.pre_llm_call(session_id=session, turn_id="t", user_message="PRIVATE TASK")
+            plugin.post_tool_call(session_id="two", turn_id="t", tool_name="terminal")
+            self.assertEqual(len(plugin._ACTIVE_STATES), 2)
+            self.assertEqual(plugin._ACTIVE_STATES[plugin._session_key("two")]["first_prompt"], "PRIVATE TASK")
+            settings["showSessionText"] = False
+            with mock.patch.object(plugin, "_send", return_value=True) as send:
+                plugin._refresh_active(); plugin._refresh_active()
+            self.assertEqual(len({call.args[0]["session_id"] for call in send.call_args_list}), 2)
+            self.assertNotIn("PRIVATE TASK", json.dumps([c.args[0] for c in send.call_args_list]))
+
+    def test_every_terminal_outcome_removes_live_refresh_state(self):
+        for outcome in ({"completed": True}, {"failed": True}, {"interrupted": True}, {}):
+            with self.subTest(outcome=outcome), mock.patch.object(plugin, "_send", return_value=True):
+                plugin.pre_llm_call(session_id="s", turn_id="t")
+                plugin.on_session_end(session_id="s", turn_id="t", **outcome)
+                self.assertEqual(plugin._ACTIVE_STATES, {})
+                plugin._FINISHED_TURNS.clear()
+
     def test_terminal_outbox_survives_failed_delivery_and_replays_same_identity(self):
         with mock.patch.object(plugin, "_settings", return_value={"instanceId": "profile", "showSessionText": True}), \
              mock.patch.object(plugin, "_send", return_value=False) as send:
@@ -82,6 +138,7 @@ class HermesPluginTests(unittest.TestCase):
     def setUp(self):
         plugin._stop_heartbeat()
         plugin._STARTED.clear()
+        plugin._ACTIVE_STATES.clear(); plugin._FINISHED_TURNS.clear()
         plugin._TASK_TITLES.clear()
         plugin._METADATA.clear()
         plugin._TODO_IDS.clear()

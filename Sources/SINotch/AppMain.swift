@@ -434,6 +434,16 @@ final class AppModel: ObservableObject {
                 return
             }
             let previous = store.sessions[event.sessionID]
+            // A durable remote outcome can arrive long after its task finished,
+            // including after restart or Clear completed. Repair saved history,
+            // but do not turn that receipt into a new, empty live task.
+            if !waitingForReply, event.provider == "hermes", previous == nil,
+               [.completed, .failed, .sessionEnded].contains(event.kind) {
+                history.finish(event)
+                receivedCount += 1
+                reply(json(["ok": true, "disposition": "historical"]))
+                return
+            }
             if waitingForReply {
                 let rid = raw["request_id"] as? String ?? ""
                 let timeout = raw["response_timeout"] as? Double ?? 60

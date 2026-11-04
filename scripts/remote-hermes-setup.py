@@ -266,13 +266,21 @@ def apply_locked(request, home, cli, relay, socket_path):
         if proc.returncode:
             raise ValueError("Hermes rejected " + action + " for " + identifier + ". Backup: " + str(backup))
     # Reload updated adapters too: enable is intentionally a no-op for an already enabled profile.
-    from hermes_cli.plugins_activation import reload_running_gateway
+    from hermes_cli import plugins_activation
     for change in preview["changes"]:
         identifier = change["id"]
         os.environ["HERMES_HOME"] = str(roots[identifier])
-        answer = reload_running_gateway()
+        answer = plugins_activation.reload_running_gateway()
+        # The dashboard/API sidecar owns a separate plugin manager. Updating
+        # files and reloading the gateway does not refresh that live process.
+        notify_backend = getattr(plugins_activation, "notify_serve_backend", None)
+        backend = notify_backend("si-notch", roots[identifier]) if callable(notify_backend) else None
+        activation = (backend or {}).get("activation") or {}
+        backend_loaded = activation.get("name") == "si-notch" and not activation.get("missing_dependencies")
         desired = next(p["enabled"] for p in request["profiles"] if p["id"] == identifier)
-        activations.append({"id": identifier, "enabled": desired, "loaded": bool(answer and answer.get("reloaded") and "si-notch" in (answer.get("plugins") or []))})
+        gateway_loaded = bool(answer and answer.get("reloaded") and "si-notch" in (answer.get("plugins") or []))
+        activations.append({"id": identifier, "enabled": desired, "loaded": gateway_loaded or backend_loaded,
+                            "gateway_loaded": gateway_loaded, "backend_loaded": backend_loaded})
     for identifier, root in roots.items():
         after = object_file(root / "config.yaml", is_yaml=True)
         expected = next((p["enabled"] for p in request["profiles"] if p["id"] == identifier), plugin_enabled(configs[identifier]))
