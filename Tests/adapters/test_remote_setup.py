@@ -20,6 +20,14 @@ with mock.patch.dict(sys.modules, yaml=yaml_fixture):
 
 
 class RemoteSetupTests(unittest.TestCase):
+    def test_updates_reload_gateway_and_live_sidecar_for_each_exact_profile(self):
+        calls = []
+        self.activation.notify_serve_backend = lambda name, home: calls.append((name, home)) or {"activation": {"name": "si-notch"}}
+        self.preview()
+        receipt = setup.apply(self.request, self.home, self.cli, self.relay, self.socket)
+        self.assertEqual(calls, [("si-notch", self.home), ("si-notch", self.profile)])
+        self.assertTrue(all(p["gateway_loaded"] and p["backend_loaded"] for p in receipt["profiles"]))
+
     def test_new_bundle_updates_configure_tool_and_tracks_it_in_snapshot(self):
         source = (ROOT / 'plugins/hermes/configure.py').read_bytes()
         self.request['sources']['configure'] = base64.b64encode(source).decode()

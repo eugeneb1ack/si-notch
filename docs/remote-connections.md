@@ -18,7 +18,9 @@ Transient SSH failures retry automatically with increasing delays of 1, 2, 4, 8,
 4. Click **Preview changes**, review the profiles and file/configuration counts, then **Apply plugin changes**. A changed selection or remote configuration requires a new preview. Backups remain on the remote host, and the result shows their directory.
 5. Use the inspected absolute remote socket path and click **Connect**. A loaded plugin restores presence within one 30-second heartbeat interval, without requiring a new task.
 
-Setup installs the bundled observer and portable relay, preserves other plugin settings and hooks, and asks Hermes to reload its plugins. A profile without a running gateway loads the plugin on its next start. Interrupted setup requires **Check profiles** before another apply; configuration changes are not silently replayed.
+Setup installs the bundled observer and portable relay, preserves other plugin settings and hooks, and asks Hermes to reload its plugins in the gateway and a compatible running API/dashboard sidecar. A profile without a running gateway loads the plugin on its next start. Interrupted setup requires **Check profiles** before another apply; configuration changes are not silently replayed.
+
+Plugin 1.16 also retries the current state of tasks still owned by its live process. Old completion receipts update known tasks or saved History without creating new empty cards. A stopped observer cannot reconstruct unrecorded activity.
 
 Profiles remain listed without active tasks. Online means a recent event, rather than proof that an idle process still runs. A connected SSH tunnel does not by itself establish profile activity.
 

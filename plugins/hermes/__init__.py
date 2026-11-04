@@ -41,6 +41,55 @@ _HEARTBEAT: tuple[threading.Event, threading.Thread] | None = None
 _EXECUTION_LOCK = threading.Lock()
 _TRACKED_EXECUTIONS: dict[tuple[str, str], Path | None] = {}
 _EXECUTION_CURSOR = 0
+_ACTIVE_LOCK = threading.RLock()
+_ACTIVE_STATES: dict[str, dict] = {}
+_FINISHED_TURNS: dict[str, str | None] = {}
+_ACTIVE_LIMIT = 256
+
+
+def _remember_activity(payload: dict, *, terminal: bool) -> None:
+    """Keep only this live process's current state, never a persisted work claim."""
+    session, turn = payload["session_id"], payload.get("turn_id")
+    with _ACTIVE_LOCK:
+        previous = _ACTIVE_STATES.get(session)
+        if terminal:
+            if previous is None or turn is None or previous.get("turn_id") in (None, turn):
+                _ACTIVE_STATES.pop(session, None)
+                _FINISHED_TURNS[session] = turn
+                if len(_FINISHED_TURNS) > _ACTIVE_LIMIT:
+                    _FINISHED_TURNS.pop(next(iter(_FINISHED_TURNS)))
+            return
+        if payload["event"] not in {"agent.working", "tool.start", "tool.finish", "tool.failed",
+                                    "agent.waiting", "approval.request"}:
+            return
+        if turn is not None and session in _FINISHED_TURNS and _FINISHED_TURNS[session] == turn:
+            return
+        if previous and payload["timestamp"] < previous["timestamp"]:
+            return
+        value = dict(payload)
+        if previous and (turn is None or previous.get("turn_id") == turn):
+            # Later tool hooks often omit the prompt or turn. Retain the live
+            # task's context in memory, respecting the text-sharing preference.
+            for key in ("turn_id", "first_prompt"):
+                if key not in value and key in previous: value[key] = previous[key]
+        _ACTIVE_STATES[session] = value
+        if len(_ACTIVE_STATES) > _ACTIVE_LIMIT:
+            _ACTIVE_STATES.pop(next(iter(_ACTIVE_STATES)))
+
+
+def _refresh_active() -> None:
+    # One bounded exchange per tick, ahead of historical queues. Preserve the
+    # event ID and time: a heartbeat restores missing state, not new progress.
+    with _ACTIVE_LOCK:
+        if not _ACTIVE_STATES: return
+        session = next(iter(_ACTIVE_STATES))
+        payload = _ACTIVE_STATES.pop(session)
+        _ACTIVE_STATES[session] = payload
+        value = dict(payload)
+        if _settings().get("showSessionText") is not True:
+            for key in ("message", "first_prompt"): value.pop(key, None)
+            value["title"] = _display_name()
+        _send(value)
 
 
 def _opaque_id(value: object, prefix: str) -> str | None:
@@ -308,6 +357,9 @@ def _lifecycle_directory() -> Path:
 
 
 def _queue_lifecycle(payload: dict) -> bool:
+    # Native-ledger recovery and live hooks share the same terminal boundary.
+    # Forget matching live state before delivery, including while disconnected.
+    _remember_activity(payload, terminal=True)
     # Persist outcome and opaque routing only; never persist task text/tool output.
     keep = {"event", "session_id", "provider", "id", "timestamp", "connection_id", "connection_name", "turn_id"}
     value = {key: data for key, data in payload.items() if key in keep}
@@ -561,7 +613,9 @@ def _emit(kind: str, session_id: object, *, tool_name: object = None,
     if kind in {"agent.working", "tool.start"} and isinstance(session_id, str):
         _track_execution(session_id, payload)
     if usage is not None: return _queue_usage(payload)
-    return _queue_lifecycle(payload) if durable else _send(payload)
+    if durable: return _queue_lifecycle(payload)
+    _remember_activity(payload, terminal=False)
+    return _send(payload)
 
 
 def _start_once(session_id: object) -> None:
@@ -779,6 +833,7 @@ def _start_heartbeat(ctx, connection: str) -> None:
         next_presence = time.monotonic() + _HEARTBEAT_SECONDS
         while not stop.wait(min(2.0, _HEARTBEAT_SECONDS)):
             if _connection_id() != connection: return
+            _refresh_active()
             _drain_usage()
             _drain_lifecycle()
             _reconcile_executions()

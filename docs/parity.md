@@ -99,3 +99,5 @@ Physical audio output, hover feel, Mission Control, all multi-monitor/no-notch/f
 Exact terminal-tab navigation, automatic quiet mode for Focus/lock/screen sharing, Bark, Docker relay, Claude Desktop/Cowork and other providers' account limits.
 
 [Testing instructions](verification.md).
+
+On 2026-11-04, app 0.4.38 and Hermes observer 1.16 were verified with one real remote API run: the same Working card survived a controlled SSH interruption, returned after a Mac app restart without a new tool event, and visibly reached Done with the final response. Automated regressions cover orphaned completion receipts, cleared cards, original completion timestamps, History repair, bounded live snapshots and text privacy on replay. The separate Web UI did not confirm hot activation; physical network outages, host crashes and other entry points remain unverified.

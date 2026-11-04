@@ -3,6 +3,17 @@ import XCTest
 @testable import SINotchCore
 
 final class SessionStoreTests: XCTestCase {
+    func testDelayedHermesOutcomeKeepsItsOriginalCompletionTime() {
+        var store = SessionStore()
+        let now = Date()
+        store.apply(AgentEvent(sessionID: "s", provider: "hermes", kind: .working,
+            timestamp: now.addingTimeInterval(-600)), receivedAt: now.addingTimeInterval(-600))
+        let completedAt = now.addingTimeInterval(-300)
+        store.apply(AgentEvent(sessionID: "s", provider: "hermes", kind: .completed,
+            timestamp: completedAt), receivedAt: now)
+        XCTAssertEqual(store.sessions["s"]?.updatedAt, completedAt)
+    }
+
     func testHermesTerminalTurnSurvivesLateActivityWhileNextTurnCanStart() {
         for status: AgentEventKind in [.completed, .failed, .sessionEnded] {
             var store = SessionStore()
