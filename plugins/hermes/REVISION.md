@@ -1,5 +1,24 @@
 # Current revision
 
+Plugin **1.17**, bundled with app **0.4.39**, recovers missing terminal hooks for API requests as well as managed workers. API activity is bound to one started admission in the same profile, including its sequence, generation, owner epoch and observed turn. The observer reads the committed native outcome without scanning transcripts or changing native state. Completed, failed, interrupted and unknown outcomes retain their distinct meanings. A newer admission or observed turn prevents an older result from changing current work; settled and superseded snapshots stop replaying Working.
+
+Automated regressions cover API failure without a worker row, successful and interrupted outcomes, unknown resolution, observer restart, disconnected delivery, reservation mismatches, ambiguous reservations, source isolation and newer turns. On 2026-11-05, all eight enabled profiles on one remote macOS host loaded 1.17 through the gateway reload protocol. Installed hashes matched this revision, profile configuration bytes were preserved and all production queues were empty. A controlled admission in an isolated SQLite fixture on that host used the installed trainer observer and real SSH relay: installed Mac app 0.4.38 showed Working, then Error after the admission failed without a final hook. The live cache, journal and outbox emptied. No model request or native production data mutation was used in this check; a new real provider-failure run and separate Web UI hot activation were not verified.
+
+Immutable runtime source: [`030de2450e5cc173da64c96f1cdf2ff1d8da833b`](https://github.com/eugeneb1ack/si-notch/tree/030de2450e5cc173da64c96f1cdf2ff1d8da833b/plugins/hermes).
+
+```sh
+hermes plugins install eugeneb1ack/si-notch/plugins/hermes --ref 030de2450e5cc173da64c96f1cdf2ff1d8da833b --no-enable
+```
+
+| File | SHA-256 |
+| --- | --- |
+| `__init__.py` | `ecb6ce8c3941c267fecb75a498a0004934e008c96a26610e973cdb79d243c6c8` |
+| `plugin.yaml` | `3dd8790d1556c0ad92c1e5b9eae716f5200dde42eba8a354836b13239b40e2af` |
+| `relay.py` | `b387d9f5b6d22bd3a76cf51f4b44a845c3bb67d5b2e13cf2866123f173a24728` |
+| `configure.py` | `acfab38546654040b3563517cf44e29ca881fb7d3ea279a6e3193cf82f12762b` |
+
+# Previous plugin 1.16
+
 Plugin **1.16**, bundled with app **0.4.38**, restores active sessions after a telemetry reconnect or Mac app restart. The live observer keeps a bounded in-memory snapshot of each current task and retries it before historical queues, preserving the original event ID and timestamp. Hook outcomes and reconciled native outcomes both remove their matching turn from that cache; a heartbeat never invents new task progress. Snapshots are not persisted and cannot survive the owning process. Text sharing is rechecked before retry.
 
 The Mac app acknowledges orphaned completion receipts without creating empty session cards, repairs an existing History entry when available, and retains the actual completion time for known tasks. Remote setup refreshes both the gateway and a compatible running API/dashboard sidecar. Automated coverage includes reconnect replay, late outcomes, cleared cards, history repair, privacy changes, bounded caches and profile-scoped activation. On 2026-11-04, installed app 0.4.38 and the observer in eight remote profiles were checked on macOS. A real API run remained Working through a target-scoped SSH interruption (reconnected in 2.43 seconds); restarting the Mac app restored the same active session and original event time in 1.79 seconds, before another tool event. The visible card then reached Done with its actual final response. Both commands and the native completed run were verified. The API listener shares the reloaded gateway process on this host; the separate Web UI did not confirm hot activation and is not covered by that live claim. Long physical network outages, host crashes and other runtime entry points remain unverified.
