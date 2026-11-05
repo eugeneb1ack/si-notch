@@ -447,22 +447,36 @@ def _track_execution(native_session: str, payload: dict) -> None:
         return
     try:
         with _EXECUTION_LOCK, closing(_open_native_database()) as database:
-            # Require one exact, executing native reservation. API threads and
-            # unsupported schemas retain their existing hook-only behavior.
+            # Bind activity to one executing reservation in this profile.
             rows = database.execute("""SELECT w.execution_id, w.generation, w.owner_epoch,
                        a.admission_id, a.generation, a.owner_epoch
                 FROM worker_executions w JOIN session_admissions a
                   ON w.execution_id = 'admission-worker:' || a.admission_id
                 WHERE w.session_id = ? AND w.status = 'running' AND a.status = 'started'
                 LIMIT 2""", (native_session,)).fetchall()
-            if len(rows) != 1: return
-            execution, generation, epoch, admission, admission_generation, admission_epoch = rows[0]
+            if len(rows) > 1: return
+            sequence = None
+            if rows:
+                execution, generation, epoch, admission, admission_generation, admission_epoch = rows[0]
+            else:
+                # API threads own admissions without a worker_executions row.
+                rows = database.execute("""SELECT a.admission_id, a.generation, a.owner_epoch, a.seq
+                    FROM session_admissions a JOIN sessions s ON s.id=a.target_session_id
+                    WHERE a.target_session_id=? AND a.status='started' AND s.source='api_server'
+                      AND NOT EXISTS (SELECT 1 FROM worker_executions w
+                          WHERE w.execution_id='admission-worker:' || a.admission_id)
+                    LIMIT 2""", (native_session,)).fetchall()
+                if len(rows) != 1: return
+                admission, generation, epoch, sequence = rows[0]
+                execution = "admission-api:" + admission
+                admission_generation, admission_epoch = generation, epoch
             directory = _private_spool(_execution_directory())
             if len(list(directory.glob("*.json"))) >= _SPOOL_LIMIT: return
             value = {key: payload[key] for key in ("session_id", "provider", "connection_id", "turn_id")}
             value.update(execution_id=execution, generation=generation, owner_epoch=epoch,
                          admission_id=admission, admission_generation=admission_generation,
                          admission_epoch=admission_epoch)
+            if sequence is not None: value["admission_sequence"] = sequence
             # An admission can contain several goal-loop turns. Its final native
             # verdict belongs only to the latest observed turn, never its predecessors.
             name = hashlib.sha256(execution.encode()).hexdigest() + ".json"
@@ -492,7 +506,7 @@ def _forget_execution(session_id: object, turn_id: object) -> None:
 
 
 def _reconcile_executions() -> None:
-    """Recover a missing worker hook from a committed native execution verdict.
+    """Recover a missing terminal hook from a committed native reservation.
 
     No transcript scan, PID heuristic, native mutation or inference from silence.
     Only opaque execution/routing identities enter the private journal.
@@ -519,21 +533,45 @@ def _reconcile_executions() -> None:
                     numbers = ("generation", "owner_epoch", "admission_generation", "admission_epoch")
                     if (any(not isinstance(value.get(k), str) or not 0 < len(value[k]) <= 4096 for k in text_keys)
                             or any(type(value.get(k)) is not int or value[k] < 0 for k in numbers)): continue
-                    if value["execution_id"] != "admission-worker:" + value["admission_id"]: continue
+                    api = value["execution_id"] == "admission-api:" + value["admission_id"]
+                    if api:
+                        sequence = value.get("admission_sequence")
+                        if (type(sequence) is not int or sequence < 1
+                                or value["generation"] != value["admission_generation"]
+                                or value["owner_epoch"] != value["admission_epoch"]): continue
+                    elif value["execution_id"] != "admission-worker:" + value["admission_id"]:
+                        continue
                     # Stamp before the snapshot: later turns sort after this
                     # receipt even if delivery is delayed by a disconnected Mac.
                     observed_at = time.time()
-                    row = database.execute("""SELECT w.status, a.status, a.outcome,
-                            (SELECT MAX(n.generation) FROM worker_executions n WHERE n.session_id=w.session_id)
-                        FROM worker_executions w JOIN session_admissions a
-                          ON w.execution_id='admission-worker:' || a.admission_id
-                        WHERE w.execution_id=? AND w.generation=? AND w.owner_epoch=?
-                          AND a.admission_id=? AND a.generation=? AND a.owner_epoch=?""",
-                        tuple(value[k] for k in ("execution_id", "generation", "owner_epoch",
-                                                "admission_id", "admission_generation", "admission_epoch"))).fetchone()
+                    if api:
+                        row = database.execute("""SELECT
+                                CASE WHEN a.status IN ('terminal','unknown') THEN 'terminal' ELSE a.status END,
+                                a.status, a.outcome,
+                                (SELECT MAX(n.seq) FROM session_admissions n
+                                    WHERE n.target_session_id=a.target_session_id)
+                            FROM session_admissions a JOIN sessions s ON s.id=a.target_session_id
+                            WHERE a.admission_id=? AND a.generation=? AND a.owner_epoch=?
+                              AND a.seq=? AND s.source='api_server'""",
+                            (value["admission_id"], value["admission_generation"],
+                             value["admission_epoch"], sequence)).fetchone()
+                    else:
+                        row = database.execute("""SELECT w.status, a.status, a.outcome,
+                                (SELECT MAX(n.generation) FROM worker_executions n WHERE n.session_id=w.session_id)
+                            FROM worker_executions w JOIN session_admissions a
+                              ON w.execution_id='admission-worker:' || a.admission_id
+                            WHERE w.execution_id=? AND w.generation=? AND w.owner_epoch=?
+                              AND a.admission_id=? AND a.generation=? AND a.owner_epoch=?""",
+                            tuple(value[k] for k in ("execution_id", "generation", "owner_epoch",
+                                                    "admission_id", "admission_generation", "admission_epoch"))).fetchone()
                     if row is None or row[0] != "terminal": continue
-                    if row[3] != value["generation"]:
-                        path.unlink(missing_ok=True); continue  # A newer worker owns this session.
+                    if row[3] != (sequence if api else value["generation"]):
+                        _remember_activity(value, terminal=True)
+                        path.unlink(missing_ok=True); continue  # A newer reservation owns this session.
+                    with _ACTIVE_LOCK:
+                        active_turn = _ACTIVE_STATES.get(value["session_id"], {}).get("turn_id")
+                    if active_turn is not None and active_turn != value["turn_id"]:
+                        path.unlink(missing_ok=True); continue
                     if row[1] == "unknown":
                         kind = "agent.waiting"
                     elif row[1] == "terminal":
