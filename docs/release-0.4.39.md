@@ -1,0 +1,2 @@
+- Fixed remote sessions remaining active after a failed request.
+- Improved session status recovery while preserving newer activity.

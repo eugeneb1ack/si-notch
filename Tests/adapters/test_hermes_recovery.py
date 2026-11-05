@@ -28,8 +28,10 @@ class WorkerRecoveryTests(unittest.TestCase):
             db.executescript("""
                 CREATE TABLE worker_executions(execution_id TEXT PRIMARY KEY,
                     session_id TEXT, generation INTEGER, owner_epoch INTEGER, status TEXT);
-                CREATE TABLE session_admissions(admission_id TEXT PRIMARY KEY,
-                    generation INTEGER, owner_epoch INTEGER, status TEXT, outcome TEXT);
+                CREATE TABLE session_admissions(seq INTEGER PRIMARY KEY AUTOINCREMENT,
+                    admission_id TEXT UNIQUE, generation INTEGER, owner_epoch INTEGER,
+                    status TEXT, outcome TEXT, target_session_id TEXT);
+                CREATE TABLE sessions(id TEXT PRIMARY KEY, source TEXT);
             """)
         plugin._TRACKED_EXECUTIONS.clear(); plugin._EXECUTION_CURSOR = 0
         plugin._ACTIVE_STATES.clear(); plugin._FINISHED_TURNS.clear()
@@ -52,7 +54,8 @@ class WorkerRecoveryTests(unittest.TestCase):
         with self.db() as db:
             db.execute("INSERT INTO worker_executions VALUES(?,?,1,7,'running')",
                        ("admission-worker:" + admission, session))
-            db.execute("INSERT INTO session_admissions VALUES(?,1,7,'started',NULL)", (admission,))
+            db.execute("""INSERT INTO session_admissions
+                (admission_id,generation,owner_epoch,status) VALUES(?,1,7,'started')""", (admission,))
         plugin.pre_llm_call(session_id=session, turn_id=turn, user_message="PRIVATE TASK TEXT")
 
     def settle(self, outcome, admission="a", status="terminal"):
@@ -64,6 +67,113 @@ class WorkerRecoveryTests(unittest.TestCase):
 
     def journal(self):
         return list((self.root / "executions").glob("*.json"))
+
+    def start_api(self, session="api-session", admission="api-admission", turn="api-turn", source="api_server"):
+        with self.db() as db:
+            db.execute("INSERT OR IGNORE INTO sessions VALUES(?,?)", (session, source))
+            db.execute("""INSERT INTO session_admissions
+                (admission_id,generation,owner_epoch,status,target_session_id)
+                VALUES(?,1,7,'started',?)""", (admission, session))
+        plugin.pre_api_request(session_id=session, turn_id=turn)
+
+    def test_api_terminal_admission_recovers_without_a_worker_or_final_hook(self):
+        for outcome, status, kind in [("failed", "terminal", "agent.failed"),
+                                      ("completed", "terminal", "agent.completed"),
+                                      ("interrupted", "terminal", "session.end"),
+                                      (None, "unknown", "agent.waiting")]:
+            with self.subTest(outcome=outcome):
+                session = str(outcome)
+                self.start_api(session=session, admission=session, turn=session)
+                self.assertEqual(len(self.journal()), 1)
+                self.settle(outcome, admission=session, status=status)
+                self.events.clear(); plugin._reconcile_executions()
+                self.assertEqual([e["event"] for e in self.events], [kind])
+                self.assertEqual(self.events[0]["session_id"], plugin._session_key(session))
+                self.assertEqual(self.events[0]["turn_id"], plugin._opaque_id(session, "turn-"))
+                self.events.clear(); plugin._refresh_active()
+                self.assertEqual(self.events, [], "a settled API request must stop replaying Working")
+                if status == "unknown":
+                    self.settle("failed", admission=session)
+                    plugin._reconcile_executions()
+                    self.assertEqual(self.events[-1]["event"], "agent.failed")
+                self.assertEqual(self.journal(), [])
+
+    def test_api_recovery_survives_observer_restart_and_disconnected_delivery(self):
+        self.start_api(); self.settle("failed", admission="api-admission")
+        plugin._TRACKED_EXECUTIONS.clear(); plugin._ACTIVE_STATES.clear()
+        before = self.database.read_bytes()
+        with mock.patch.object(plugin, "_send", return_value=False): plugin._reconcile_executions()
+        self.assertEqual(self.journal(), [])
+        receipt, = (self.root / "lifecycle").glob("*.json")
+        saved = json.loads(receipt.read_text())
+        self.assertEqual(saved["event"], "agent.failed")
+        self.assertEqual(self.database.read_bytes(), before)
+        self.events.clear(); plugin._drain_lifecycle()
+        self.assertEqual(self.events, [saved])
+
+    def test_api_journal_contains_only_opaque_routing_and_reservation_coordinates(self):
+        self.start_api()
+        path, = self.journal()
+        text = path.read_text()
+        self.assertNotIn("api-session", text)
+        self.assertNotIn("api-turn", text)
+        self.assertEqual(path.stat().st_mode & 0o777, 0o600)
+
+    def test_api_recovery_does_not_close_a_newer_admission_or_replay_the_old_turn(self):
+        self.start_api(); self.settle("failed", admission="api-admission")
+        with self.db() as db:
+            db.execute("""INSERT INTO session_admissions
+                (admission_id,generation,owner_epoch,status,target_session_id)
+                VALUES('new-admission',2,7,'started','api-session')""")
+        self.events.clear(); plugin._reconcile_executions(); plugin._refresh_active()
+        self.assertEqual(self.events, [])
+        self.assertEqual(self.journal(), [])
+
+    def test_old_api_admission_preserves_a_newer_observed_turn(self):
+        self.start_api(); self.settle("failed", admission="api-admission")
+        plugin.pre_api_request(session_id="api-session", turn_id="new-turn")
+        self.events.clear(); plugin._reconcile_executions(); plugin._refresh_active()
+        self.assertEqual([e["event"] for e in self.events], ["agent.working"])
+        self.assertEqual(self.events[0]["turn_id"], plugin._opaque_id("new-turn", "turn-"))
+
+    def test_api_reservation_must_be_unique_started_and_bound_to_an_api_session(self):
+        self.start_api(source="cli")
+        self.assertEqual(self.journal(), [])
+        with self.db() as db:
+            db.execute("UPDATE sessions SET source='api_server'")
+            db.execute("UPDATE session_admissions SET status='queued'")
+        plugin.pre_api_request(session_id="api-session", turn_id="queued-turn")
+        self.assertEqual(self.journal(), [])
+        with self.db() as db:
+            db.execute("UPDATE session_admissions SET status='started'")
+            db.execute("""INSERT INTO session_admissions
+                (admission_id,generation,owner_epoch,status,target_session_id)
+                VALUES('ambiguous',2,7,'started','api-session')""")
+        plugin.pre_api_request(session_id="api-session", turn_id="ambiguous-turn")
+        self.assertEqual(self.journal(), [])
+
+    def test_api_recovery_requires_the_original_reservation_coordinates(self):
+        self.start_api(); self.settle("failed", admission="api-admission")
+        path, = self.journal()
+        original = json.loads(path.read_text()); self.events.clear()
+        for key, value in [("generation", 2), ("owner_epoch", 8), ("admission_generation", 2),
+                           ("admission_epoch", 8), ("admission_sequence", 999),
+                           ("connection_id", "another-profile")]:
+            path.write_text(json.dumps(dict(original, **{key: value})))
+            plugin._reconcile_executions()
+            self.assertEqual(self.events, [], key)
+            self.assertTrue(path.exists(), key)
+
+    def test_api_admission_journal_follows_the_latest_goal_loop_turn(self):
+        self.start_api()
+        plugin.pre_api_request(session_id="api-session", turn_id="next-goal-turn")
+        self.assertEqual(len(self.journal()), 1)
+        plugin.on_session_end(session_id="api-session", turn_id="api-turn", completed=True)
+        self.assertEqual(len(self.journal()), 1)
+        self.settle("failed", admission="api-admission"); self.events.clear()
+        plugin._reconcile_executions()
+        self.assertEqual([e["event"] for e in self.events], ["agent.failed"])
+        self.assertEqual(self.events[0]["turn_id"], plugin._opaque_id("next-goal-turn", "turn-"))
 
     def test_killed_worker_keeps_only_private_opaque_execution_coordinates(self):
         self.start()
